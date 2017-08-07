@@ -1,0 +1,43 @@
+---
+en:
+  vagrant:
+    commands:
+      status:
+        frozen: |-
+          The VM is frozen. To start it, you can run `vagrant up`, or you can
+          instead run `vagrant destroy` to delete it and discard all saved state.
+        stopped: |-
+          The VM is stopped. To start it, you can run `vagrant up`, or you can
+          instead run `vagrant destroy` to delete it and discard all saved state.
+    errors:
+      lxd_connection_failure: |-
+        The provider was unable to contact the LXD daemon at %{api_endpoint}.
+        
+        It's possible that LXD isn't installed, or that it isn't configured to
+        accept HTTP connections from your machine. You can check whether HTTP
+        access is enabled, and whether your machine is allowed to use it, with
+        the following commands:
+        
+            $ lxc config show core.https_address
+            $ lxc config trust list
+        
+        If either result is empty, you will need to correct the way LXD is
+        configured before Vagrant can use it. This can be done with the
+        following commands (it's safe to run them more than once):
+        
+            $ sudo service lxd start
+            $ sudo lxd init --auto
+            $ lxc config set core.https_address %{https_address}
+            $ lxc config trust add %{client_cert}
+        
+      lxd_operation_timeout: |-
+        The container failed to respond within %{time_limit} seconds. Try
+        running the following command to see whether an error occurs:
+        
+            $ lxc %{operation} %{container_name}
+        
+        If that command runs successfully, there may be a bug in the LXD
+        provider. If this is the case, please submit an issue at:
+        
+            https://gitlab.com/catalyst-it/vagrant-lxd/issues
+        
