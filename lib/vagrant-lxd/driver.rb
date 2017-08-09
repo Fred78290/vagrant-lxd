@@ -1,5 +1,6 @@
 require 'hyperkit'
 require 'tempfile'
+require 'timeout'
 require 'vagrant/machine_state'
 
 module VagrantLXD
@@ -105,10 +106,20 @@ module VagrantLXD
     end
 
     def ipv4_address
-      state = @lxd.container_state(container_name)
-      state[:network][:eth0][:addresses].find do |address|
-        return address[:address] if address[:family] == 'inet'
+      @logger.debug "Looking up ipv4 address for #{container_name}..."
+      Timeout.timeout(10) do
+        loop do
+          if address = container_state[:network][:eth0][:addresses].find { |a| a[:family] == 'inet' }
+            return address[:address]
+          else
+            @logger.debug "No ipv4 address found, sleeping 1s before trying again..."
+            sleep(1)
+          end
+        end
       end
+    rescue Timeout::Error
+      @logger.warn "Failed to find ipv4 address for #{container_name} within 10 seconds!"
+      fail OperationTimeout, time_limit: 10, operation: 'info', container_name: container_name
     end
 
     def prepare_image(box)
