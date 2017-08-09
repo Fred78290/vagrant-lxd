@@ -31,19 +31,27 @@ module VagrantLXD
       "vagrant-#{File.basename(Dir.pwd)}-#{@machine.name}"
     end
 
+    def container_image
+      @lxd.image_by_alias(container_name)
+    end
+
+    def container_state
+      @lxd.container_state(container_name)
+    end
+
     def state
-      state = @lxd.container_state(container_name)
-      state[:status].downcase.to_sym
+      container_state[:status].downcase.to_sym
     rescue Hyperkit::NotFound
       Vagrant::MachineState::NOT_CREATED_ID
     end
 
-    def start
-      if state == Vagrant::MachineState::NOT_CREATED_ID
+    def create
+      if in_state? Vagrant::MachineState::NOT_CREATED_ID
         prepare_image(@machine.box) do |path|
-          image = @lxd.create_image_from_file(path)
+          image = @lxd.create_image_from_file(path, alias: container_name)
+          image_alias = @lxd.create_image_alias(image[:metadata][:fingerprint], container_name)
+          container = @lxd.create_container(container_name, alias: container_name)
           @logger.debug 'Created image: ' << image.inspect
-          container = @lxd.create_container(container_name, fingerprint: image[:metadata][:fingerprint])
           @logger.debug 'Created container: ' << container.inspect
           @machine.id = container[:id]
         end
@@ -74,6 +82,9 @@ module VagrantLXD
     def destroy
       if in_state? :stopped
         @lxd.delete_container(container_name)
+        @lxd.delete_image(container_image[:fingerprint])
+      else
+        @logger.debug "Skipped destroy (#{container_name} is not stopped)"
       end
     end
 
