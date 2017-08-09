@@ -4,17 +4,17 @@ require 'vagrant-lxd/driver'
 
 module VagrantLXD
   module Action
-    include Vagrant::Action::Builtin
 
     #
-    # The DriverProxy class is middleware that simply forwards its call
-    # to the corresponding method on the LXD driver and copies the
-    # result into the env hash under the key "machine_<method>".
+    # The LXD class is middleware that simply forwards its call to the
+    # corresponding method on the LXD driver and copies the result into
+    # the env hash under the key `:machine_<method>`.
     #
     # The method to be called is controlled by the proxy object's class
-    # name.
+    # name. The correct instance to use for a particular method call is
+    # retrieved with `LXD.action`.
     #
-    class DriverProxy
+    class LXD
       def initialize(app, env)
         @app = app
         @driver = Driver.new(env)
@@ -30,46 +30,187 @@ module VagrantLXD
       def method
         self.class.to_s.split('::').last.downcase
       end
+
+      def LXD.action(name)
+        const = name.to_s.sub(/[a-z]/, &:upcase)
+        const_get(const)
+      rescue NameError
+        Class.new(LXD).tap do |proxy|
+          const_set(const, proxy)
+        end
+      end
     end
 
-    def Action.up
-      Vagrant::Action::Builder.new.tap do |b|
-        b.use ConfigValidate
-        b.use Call, IsState, Vagrant::MachineState::NOT_CREATED_ID do |env, c|
-          if env[:result]
-            env[:ui].info "Machine '#{env[:machine].name}' has not been created yet, starting..."
-            c.use HandleBox
-            c.use start
-          else
+    #
+    # Message issues a message to the user through the `env[:ui]` object
+    # provided to this middleware. The level is controlled via `type`,
+    # which should be a method on `env[:ui]`.
+    #
+    class Message
+      def initialize(app, env, type, message)
+        @app = app
+        @type = type
+        @message = message
+      end
+
+      def call(env)
+        env[:ui].send(@type, @message)
+        @app.call(env)
+      end
+    end
+
+    #
+    # Action definitions.
+    #
+    class << Action
+      include Vagrant::Action::Builtin
+
+      def up
+        Vagrant::Action::Builder.new.tap do |b|
+          b.use ConfigValidate
+          b.use Call, state do |env, c|
+            case env[:machine_state]
+            when Vagrant::MachineState::NOT_CREATED_ID
+              c.use Message, :info, 'Machine has not been created yet, starting...'
+              c.use HandleBox
+              c.use LXD.action(:create)
+              c.use LXD.action(:resume)
+              c.use WaitForCommunicator
+              c.use SyncedFolders
+              c.use Message, :info, 'Machine booted and ready!'
+            when :running
+              c.use Message, :info, 'Machine is already running.'
+            when :frozen, :stopped
+              c.use resume
+            else
+              c.use Message, :error, "Machine cannot be started while #{env[:machine_state]}."
+            end
+          end
+        end
+      end
+
+      def destroy
+        Vagrant::Action::Builder.new.tap do |b|
+          b.use ConfigValidate
+          b.use Call, IsState, Vagrant::MachineState::NOT_CREATED_ID do |env, c|
+            if env[:result]
+              next
+            else
+              c.use Call, DestroyConfirm do |env, d|
+                if env[:result]
+                  d.use halt
+                  d.use Message, :info, 'Destroying machine and associated data...'
+                  d.use LXD.action(:destroy)
+                else
+                  d.use Message, :info, 'Machine will not be destroyed.'
+                end
+              end
+            end
+          end
+        end
+      end
+
+      def halt
+        Vagrant::Action::Builder.new.tap do |b|
+          b.use ConfigValidate
+          b.use Call, state do |env, c|
+            case env[:machine_state]
+            when Vagrant::MachineState::NOT_CREATED_ID
+              next
+            when :stopped
+              c.use Message, :info, 'Machine is already stopped.'
+            when :frozen, :running
+              c.use Message, :info, 'Stopping machine...'
+              c.use LXD.action(:halt)
+            else
+              c.use Message, :error, "Machine cannot be stopped while #{env[:machine_state]}."
+            end
+          end
+        end
+      end
+
+      def suspend
+        Vagrant::Action::Builder.new.tap do |b|
+          b.use ConfigValidate
+          b.use Call, state do |env, c|
+            case env[:machine_state]
+            when Vagrant::MachineState::NOT_CREATED_ID
+              next
+            when :frozen
+              c.use Message, :info, 'Machine is already suspended.'
+            when :running
+              c.use Message, :info, 'Suspending machine...'
+              c.use LXD.action(:suspend)
+            else
+              c.use Message, :error, "Machine cannot be suspended while #{env[:machine_state]}."
+            end
+          end
+        end
+      end
+
+      def resume
+        Vagrant::Action::Builder.new.tap do |b|
+          b.use ConfigValidate
+          b.use Call, state do |env, c|
+            case env[:machine_state]
+            when Vagrant::MachineState::NOT_CREATED_ID
+              next
+            when :running
+              c.use Message, :info, 'Machine is already running.'
+            when :frozen, :stopped
+              c.use Message, :info, 'Resuming machine...'
+              c.use LXD.action(:resume)
+              c.use WaitForCommunicator
+              c.use SyncedFolders
+            else
+              c.use Message, :error, "Machine cannot be resumed while #{env[:machine_state]}."
+            end
+          end
+        end
+      end
+
+      def reload
+        Vagrant::Action::Builder.new.tap do |b|
+          b.use ConfigValidate
+          b.use Call, state do |env, c|
+            case env[:machine_state]
+            when Vagrant::MachineState::NOT_CREATED_ID
+              next
+            when :frozen, :running
+              c.use halt
+            end
             c.use resume
           end
         end
       end
-    end
 
-    %w(destroy halt info resume start state suspend reload resume).each do |name|
-      Action.define_singleton_method(name) do
-        Vagrant::Action::Builder.new.tap do |b|
-          const = name.sub(/[a-z]/, &:upcase)
-          proxy = const_get(const) rescue nil
-
-          if proxy.nil?
-            proxy = Class.new(DriverProxy)
-            const_set(const, proxy)
-          end
-
+      def provision
+        Vagrant::Action::Builder.new do |b|
           b.use ConfigValidate
-          b.use proxy
+          b.use Call, IsState, Vagrant::MachineState::NOT_CREATED_ID do |env, c|
+            if env[:result]
+              next
+            else
+              c.use Provision
+            end
+          end
         end
       end
-    end
 
-    def Action.ssh
-      Vagrant::Action::Builder.new.tap do |b|
-        b.use ConfigValidate
-        b.use Call, IsState, :running do |env, c|
-          c.use SSHExec if env[:result]
-        end
+      def state
+        Vagrant::Action::Builder.build LXD.action(:state)
+      end
+
+      def info
+        Vagrant::Action::Builder.build LXD.action(:info)
+      end
+
+      def ssh
+        Vagrant::Action::Builder.build SSHExec
+      end
+
+      def ssh_run
+        Vagrant::Action::Builder.build SSHRun
       end
     end
   end

@@ -47,8 +47,6 @@ module VagrantLXD
           @machine.id = container[:id]
         end
       end
-
-      resume
     end
 
     def resume
@@ -73,9 +71,7 @@ module VagrantLXD
     end
 
     def destroy
-      halt
-
-      unless in_state? Vagrant::MachineState::NOT_CREATED_ID
+      if in_state? :stopped
         @lxd.delete_container(container_name)
       end
     end
@@ -87,11 +83,6 @@ module VagrantLXD
           port: ipv4_port,
         }
       end
-    end
-
-    def reload
-      halt
-      resume
     end
 
     def suspend
