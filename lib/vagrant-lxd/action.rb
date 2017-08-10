@@ -17,7 +17,7 @@ module VagrantLXD
     class LXD
       def initialize(app, env)
         @app = app
-        @driver = Driver.new(env)
+        @driver = Driver.new(env[:machine])
       end
 
       def call(env)
@@ -75,9 +75,9 @@ module VagrantLXD
               c.use HandleBox
               c.use LXD.action(:create)
               c.use LXD.action(:resume)
-              c.use WaitForCommunicator
               c.use SyncedFolders
-              c.use Message, :info, 'Machine booted and ready!'
+              c.use WaitForCommunicator
+              c.use Provision
             when :running
               c.use Message, :info, 'Machine is already running.'
             when :frozen, :stopped
@@ -160,8 +160,9 @@ module VagrantLXD
             when :frozen, :stopped
               c.use Message, :info, 'Resuming machine...'
               c.use LXD.action(:resume)
-              c.use WaitForCommunicator
               c.use SyncedFolders
+              c.use WaitForCommunicator
+              c.use Provision
             else
               c.use Message, :error, "Machine cannot be resumed while #{env[:machine_state]}."
             end

@@ -5,9 +5,14 @@ module VagrantLXD
     name Version::NAME
     description Version::DESCRIPTION
 
-    provider(:lxd, box_format: 'lxc', priority: 0) do
+    provider(:lxd, box_format: 'lxc', priority: 1) do
       require_relative 'provider'
       Provider
+    end
+
+    synced_folder(:lxd) do
+      require_relative 'synced_folder'
+      SyncedFolder
     end
 
     command(:lxd) do

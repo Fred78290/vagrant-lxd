@@ -6,6 +6,7 @@ Bundler::GemHelper.install_tasks
 
 RSpec::Core::RakeTask.new(:spec) do |t|
   t.rspec_opts = '-I. -rspec/common'
+  t.verbose = false
 end
 
 task :default => :spec
