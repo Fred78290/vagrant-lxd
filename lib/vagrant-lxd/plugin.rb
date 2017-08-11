@@ -5,7 +5,7 @@ module VagrantLXD
     name Version::NAME
     description Version::DESCRIPTION
 
-    provider(:lxd, box_format: 'lxc', priority: 1) do
+    provider(:lxd, box_format: 'lxc', priority: 1, parallel: true) do
       require_relative 'provider'
       Provider
     end

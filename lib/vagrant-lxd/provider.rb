@@ -11,7 +11,7 @@ module VagrantLXD
     end
 
     def state
-      env = @machine.action('state')
+      env = @machine.action('state', lock: false)
       state = env[:machine_state]
       short = state.to_s.gsub('_', ' ')
       long = I18n.t("vagrant.commands.status.#{state}")
@@ -19,7 +19,7 @@ module VagrantLXD
     end
 
     def ssh_info
-      env = @machine.action('info')
+      env = @machine.action('info', lock: false)
       env[:machine_info]
     end
 
