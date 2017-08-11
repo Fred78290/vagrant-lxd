@@ -186,7 +186,7 @@ module VagrantLXD
       end
 
       def provision
-        Vagrant::Action::Builder.new do |b|
+        Vagrant::Action::Builder.new.tap do |b|
           b.use ConfigValidate
           b.use Call, IsState, Vagrant::MachineState::NOT_CREATED_ID do |env, c|
             if env[:result]
