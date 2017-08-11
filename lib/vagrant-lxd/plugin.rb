@@ -34,6 +34,11 @@ module VagrantLXD
       SyncedFolder
     end
 
+    config(:lxd, :provider) do
+      require_relative 'config'
+      Config
+    end
+
     command(:lxd) do
       require_relative 'command'
       Command

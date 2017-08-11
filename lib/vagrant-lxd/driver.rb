@@ -32,8 +32,11 @@ module VagrantLXD
       error_key 'lxd_operation_timeout'
     end
 
+    attr_reader :timeout
+
     def initialize(machine)
       @machine = machine
+      @timeout = machine.provider_config.timeout
       @logger = Log4r::Logger.new('vagrant::lxd')
       @lxd = Hyperkit::Client.new(api_endpoint: 'https://127.0.0.1:8443', verify_ssl: false)
       @lxd.images # basic connectivity test
@@ -110,29 +113,29 @@ module VagrantLXD
       when :stopped
         @lxd.start_container(container_name)
       when :frozen
-        @lxd.unfreeze_container(container_name, timeout: 10)
+        @lxd.unfreeze_container(container_name, timeout: timeout)
       end
     rescue Hyperkit::BadRequest
-      @machine.ui.warn 'Container failed to start within 10 seconds'
-      fail OperationTimeout, time_limit: 10, operation: 'start', container_name: container_name
+      @machine.ui.warn "Container failed to start within #{timeout} seconds"
+      fail OperationTimeout, time_limit: timeout, operation: 'start', container_name: container_name
     end
 
     def halt
       if in_state? :running, :frozen
-        @lxd.stop_container(container_name, timeout: 10)
+        @lxd.stop_container(container_name, timeout: timeout)
       end
     rescue Hyperkit::BadRequest
-      @machine.ui.warn 'Container failed to stop within 10 seconds, forcing shutdown...'
-      @lxd.stop_container(container_name, timeout: 10, force: true)
+      @machine.ui.warn "Container failed to stop within #{timeout} seconds, forcing shutdown..."
+      @lxd.stop_container(container_name, timeout: timeout, force: true)
     end
 
     def suspend
       if in_state? :running
-        @lxd.freeze_container(container_name, timeout: 10)
+        @lxd.freeze_container(container_name, timeout: timeout)
       end
     rescue Hyperkit::BadRequest
-      @machine.ui.warn 'Container failed to suspend within 10 seconds'
-      fail OperationTimeout, time_limit: 10, operation: 'info', container_name: container_name
+      @machine.ui.warn "Container failed to suspend within #{timeout} seconds"
+      fail OperationTimeout, time_limit: timeout, operation: 'info', container_name: container_name
     end
 
     def destroy
@@ -165,7 +168,7 @@ module VagrantLXD
 
     def ipv4_address
       @logger.debug "Looking up ipv4 address for #{container_name}..."
-      Timeout.timeout(10) do
+      Timeout.timeout(timeout) do
         loop do
           if address = container_state[:network][:eth0][:addresses].find { |a| a[:family] == 'inet' }
             return address[:address]
@@ -176,8 +179,8 @@ module VagrantLXD
         end
       end
     rescue Timeout::Error
-      @logger.warn "Failed to find ipv4 address for #{container_name} within 10 seconds!"
-      fail OperationTimeout, time_limit: 10, operation: 'info', container_name: container_name
+      @logger.warn "Failed to find ipv4 address for #{container_name} within #{timeout} seconds!"
+      fail OperationTimeout, time_limit: timeout, operation: 'info', container_name: container_name
     end
 
     def build_config

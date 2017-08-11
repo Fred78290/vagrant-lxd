@@ -18,7 +18,15 @@
 #
 
 module VagrantLXD
-  module Config < Vagrant.plugin('2', :config)
-    # TODO
+  class Config < Vagrant.plugin('2', :config)
+    attr_accessor :timeout
+
+    def initialize
+      @timeout = UNSET_VALUE
+    end
+
+    def finalize!
+      @timeout = timeout.to_i rescue 10
+    end
   end
 end
