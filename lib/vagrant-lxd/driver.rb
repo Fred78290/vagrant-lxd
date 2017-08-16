@@ -265,7 +265,9 @@ module VagrantLXD
     end
 
     def generate_machine_id
-      "vagrant-#{File.basename(Dir.pwd)}-#{@machine.name}-#{SecureRandom.hex(8)}"
+      id = "vagrant-#{File.basename(Dir.pwd)}-#{@machine.name}-#{SecureRandom.hex(8)}"
+      id = id.slice(0...63).gsub(/[^a-zA-Z0-9]/, '-')
+      id
     end
 
     def error(klass)
