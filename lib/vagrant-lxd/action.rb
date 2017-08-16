@@ -79,14 +79,29 @@ module VagrantLXD
     end
 
     #
+    # Check whether the LXD driver is usable and immediately signal an
+    # error if not (preventing any remaining middlewares from running).
+    #
+    class ConnectionValidate
+      def initialize(app, env)
+        @app = app
+        @driver = Driver.new(env[:machine])
+      end
+
+      def call(env)
+        @driver.validate!
+        @app.call(env)
+      end
+    end
+
+    #
     # Action definitions.
     #
     class << Action
       include Vagrant::Action::Builtin
 
       def up
-        Vagrant::Action::Builder.new.tap do |b|
-          b.use ConfigValidate
+        builder do |b|
           b.use Call, state do |env, c|
             case env[:machine_state]
             when Vagrant::MachineState::NOT_CREATED_ID
@@ -109,8 +124,7 @@ module VagrantLXD
       end
 
       def destroy
-        Vagrant::Action::Builder.new.tap do |b|
-          b.use ConfigValidate
+        builder do |b|
           b.use Call, IsState, Vagrant::MachineState::NOT_CREATED_ID do |env, c|
             if env[:result]
               next
@@ -130,8 +144,7 @@ module VagrantLXD
       end
 
       def halt
-        Vagrant::Action::Builder.new.tap do |b|
-          b.use ConfigValidate
+        builder do |b|
           b.use Call, state do |env, c|
             case env[:machine_state]
             when Vagrant::MachineState::NOT_CREATED_ID
@@ -149,8 +162,7 @@ module VagrantLXD
       end
 
       def suspend
-        Vagrant::Action::Builder.new.tap do |b|
-          b.use ConfigValidate
+        builder do |b|
           b.use Call, state do |env, c|
             case env[:machine_state]
             when Vagrant::MachineState::NOT_CREATED_ID
@@ -168,8 +180,7 @@ module VagrantLXD
       end
 
       def resume
-        Vagrant::Action::Builder.new.tap do |b|
-          b.use ConfigValidate
+        builder do |b|
           b.use Call, state do |env, c|
             case env[:machine_state]
             when Vagrant::MachineState::NOT_CREATED_ID
@@ -190,8 +201,7 @@ module VagrantLXD
       end
 
       def reload
-        Vagrant::Action::Builder.new.tap do |b|
-          b.use ConfigValidate
+        builder do |b|
           b.use Call, state do |env, c|
             case env[:machine_state]
             when Vagrant::MachineState::NOT_CREATED_ID
@@ -205,8 +215,7 @@ module VagrantLXD
       end
 
       def provision
-        Vagrant::Action::Builder.new.tap do |b|
-          b.use ConfigValidate
+        builder do |b|
           b.use Call, IsState, Vagrant::MachineState::NOT_CREATED_ID do |env, c|
             if env[:result]
               next
@@ -218,19 +227,29 @@ module VagrantLXD
       end
 
       def state
-        Vagrant::Action::Builder.build LXD.action(:state)
+        builder { |b| b.use LXD.action(:state) }
       end
 
       def info
-        Vagrant::Action::Builder.build LXD.action(:info)
+        builder { |b| b.use LXD.action(:info) }
       end
 
       def ssh
-        Vagrant::Action::Builder.build SSHExec
+        builder { |b| b.use SSHExec }
       end
 
       def ssh_run
-        Vagrant::Action::Builder.build SSHRun
+        builder { |b| b.use SSHRun }
+      end
+
+    private
+
+      def builder
+        Vagrant::Action::Builder.new.tap do |b|
+          b.use ConfigValidate
+          b.use ConnectionValidate
+          yield b
+        end
       end
     end
   end

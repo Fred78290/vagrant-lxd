@@ -18,6 +18,7 @@
 #
 
 require 'hyperkit'
+require 'securerandom'
 require 'tempfile'
 require 'timeout'
 require 'vagrant/machine_state'
@@ -26,11 +27,21 @@ module VagrantLXD
   class Driver
     include Vagrant::Util
 
-    VAGRANT_UID = 1000
+    VAGRANT_UID = 1000 # TODO Make this configurable.
 
     class OperationTimeout < Vagrant::Errors::VagrantError
       error_key 'lxd_operation_timeout'
     end
+
+    class ConnectionFailure < Vagrant::Errors::ProviderNotUsable
+      error_key 'lxd_connection_failure'
+    end
+
+    class AuthenticationFailure < Vagrant::Errors::ProviderNotUsable
+      error_key 'lxd_authentication_failure'
+    end
+
+    NOT_CREATED = Vagrant::MachineState::NOT_CREATED_ID
 
     attr_reader :api_endpoint
     attr_reader :timeout
@@ -40,32 +51,32 @@ module VagrantLXD
       @timeout = machine.provider_config.timeout
       @api_endpoint = machine.provider_config.api_endpoint
       @logger = Log4r::Logger.new('vagrant::lxd')
-      @lxd = Hyperkit::Client.new(api_endpoint: 'https://127.0.0.1:8443', verify_ssl: false)
-      @lxd.images # basic connectivity test
-    rescue Faraday::ConnectionFailed => e
-      fail Vagrant::Errors::ProviderNotUsable,
-        provider: 'lxd',
-        machine: @machine.name,
-        message: I18n.t('vagrant.errors.lxd_connection_failure',
-          https_address: '127.0.0.1',
-          api_endpoint: 'https://127.0.0.1:8443',
-          client_cert: File.expand_path('.config/lxc/client.crt', ENV['HOME']))
+      @lxd = Hyperkit::Client.new(api_endpoint: api_endpoint.to_s, verify_ssl: false)
     end
 
-    def container_name
-      "vagrant-#{File.basename(Dir.pwd)}-#{@machine.name}"
+    def machine_id
+      @machine.id
     end
 
-    def container
-      @lxd.container(container_name)
+    def validate!
+      raise error(ConnectionFailure) unless connection_usable?
+      raise error(AuthenticationFailure) unless authentication_usable?
     end
 
-    def container_image
-      @lxd.image_by_alias(container_name)
+    def connection_usable?
+      @lxd.images
+    rescue Faraday::ConnectionFailed
+      false
+    else
+      true
     end
 
-    def container_state
-      @lxd.container_state(container_name)
+    def authentication_usable?
+      connection_usable? and @lxd.containers
+    rescue Hyperkit::Forbidden
+      false
+    else
+      true
     end
 
     def synced_folders_usable?
@@ -73,39 +84,48 @@ module VagrantLXD
       if map = container[:config][:'raw.idmap']
         true if map =~ /^uid #{Process.uid} #{VAGRANT_UID}$/
       end
+    rescue Vagrant::Errors::ProviderNotUsable
+      false
     end
 
     def mount(name, options)
-      container = @lxd.container(container_name)
+      container = @lxd.container(machine_id)
       devices = container[:devices].to_hash
       devices[name] = { type: 'disk', path: options[:guestpath], source: options[:hostpath] }
       container[:devices] = devices
-      @lxd.update_container(container_name, container)
+      @lxd.update_container(machine_id, container)
     end
 
     def unmount(name, options)
-      container = @lxd.container(container_name)
+      container = @lxd.container(machine_id)
       devices = container[:devices].to_hash
       devices.delete(:vagrant)
       container[:devices] = devices
-      @lxd.update_container(container_name, container)
+      @lxd.update_container(machine_id, container)
+    end
+
+    def container
+      @lxd.container(machine_id)
     end
 
     def state
+      return NOT_CREATED if machine_id.nil?
+      container_state = @lxd.container_state(machine_id)
       container_state[:status].downcase.to_sym
     rescue Hyperkit::NotFound
-      Vagrant::MachineState::NOT_CREATED_ID
+      NOT_CREATED
     end
 
     def create
-      if in_state? Vagrant::MachineState::NOT_CREATED_ID
+      if in_state? NOT_CREATED
         prepare_image(@machine.box) do |path|
-          image = @lxd.create_image_from_file(path, alias: container_name)
-          image_alias = @lxd.create_image_alias(image[:metadata][:fingerprint], container_name)
-          container = @lxd.create_container(container_name, alias: container_name, config: build_config)
+          id = generate_machine_id
+          image = @lxd.create_image_from_file(path, alias: id)
+          container = @lxd.create_container(id, fingerprint: image[:metadata][:fingerprint], config: build_config)
+          @lxd.create_image_alias(image[:metadata][:fingerprint], id)
           @logger.debug 'Created image: ' << image.inspect
           @logger.debug 'Created container: ' << container.inspect
-          @machine.id = container[:id]
+          @machine.id = id
         end
       end
     end
@@ -113,39 +133,39 @@ module VagrantLXD
     def resume
       case state
       when :stopped
-        @lxd.start_container(container_name)
+        @lxd.start_container(machine_id)
       when :frozen
-        @lxd.unfreeze_container(container_name, timeout: timeout)
+        @lxd.unfreeze_container(machine_id, timeout: timeout)
       end
     rescue Hyperkit::BadRequest
       @machine.ui.warn "Container failed to start within #{timeout} seconds"
-      fail OperationTimeout, time_limit: timeout, operation: 'start', container_name: container_name
+      fail OperationTimeout, time_limit: timeout, operation: 'start', machine: machine_id
     end
 
     def halt
       if in_state? :running, :frozen
-        @lxd.stop_container(container_name, timeout: timeout)
+        @lxd.stop_container(machine_id, timeout: timeout)
       end
     rescue Hyperkit::BadRequest
       @machine.ui.warn "Container failed to stop within #{timeout} seconds, forcing shutdown..."
-      @lxd.stop_container(container_name, timeout: timeout, force: true)
+      @lxd.stop_container(machine_id, timeout: timeout, force: true)
     end
 
     def suspend
       if in_state? :running
-        @lxd.freeze_container(container_name, timeout: timeout)
+        @lxd.freeze_container(machine_id, timeout: timeout)
       end
     rescue Hyperkit::BadRequest
       @machine.ui.warn "Container failed to suspend within #{timeout} seconds"
-      fail OperationTimeout, time_limit: timeout, operation: 'info', container_name: container_name
+      fail OperationTimeout, time_limit: timeout, operation: 'info', machine: machine_id
     end
 
     def destroy
       if in_state? :stopped
-        @lxd.delete_container(container_name)
-        @lxd.delete_image(container_image[:fingerprint])
+        delete_image
+        delete_container
       else
-        @logger.debug "Skipped destroy (#{container_name} is not stopped)"
+        @logger.debug "Skipped container destroy (#{machine_id} is not stopped)"
       end
     end
 
@@ -156,6 +176,20 @@ module VagrantLXD
           port: ipv4_port,
         }
       end
+    end
+
+  protected
+
+    def delete_container
+      @lxd.delete_container(machine_id)
+    rescue Hyperkit::NotFound
+      @logger.warn "Container '#{machine_id}' not found, unable to destroy"
+    end
+
+    def delete_image
+      @lxd.delete_image(container[:config][:'volatile.base_image'])
+    rescue Hyperkit::NotFound
+      @logger.warn "Image for '#{machine_id}' not found, unable to destroy"
     end
 
   private
@@ -169,20 +203,21 @@ module VagrantLXD
     end
 
     def ipv4_address
-      @logger.debug "Looking up ipv4 address for #{container_name}..."
+      @logger.debug "Looking up ipv4 address for #{machine_id}..."
       Timeout.timeout(timeout) do
         loop do
+          container_state = @lxd.container_state(machine_id)
           if address = container_state[:network][:eth0][:addresses].find { |a| a[:family] == 'inet' }
             return address[:address]
           else
-            @logger.debug "No ipv4 address found, sleeping 1s before trying again..."
+            @logger.debug 'No ipv4 address found, sleeping 1s before trying again...'
             sleep(1)
           end
         end
       end
     rescue Timeout::Error
-      @logger.warn "Failed to find ipv4 address for #{container_name} within #{timeout} seconds!"
-      fail OperationTimeout, time_limit: timeout, operation: 'info', container_name: container_name
+      @logger.warn "Failed to find ipv4 address for #{machine_id} within #{timeout} seconds!"
+      fail OperationTimeout, time_limit: timeout, operation: 'info', machine: machine_id
     end
 
     def build_config
@@ -218,7 +253,7 @@ module VagrantLXD
         Subprocess.execute('gunzip', 'rootfs.tar.gz')
         File.open('metadata.yaml', 'w') do |metadata|
           metadata.puts 'architecture: x86_64'
-          metadata.puts 'creation_date: ' << Time.now.strftime("%s")
+          metadata.puts 'creation_date: ' << Time.now.strftime('%s')
         end
         Subprocess.execute('tar', '-rf', 'rootfs.tar', 'metadata.yaml')
         Subprocess.execute('gzip', 'rootfs.tar')
@@ -227,6 +262,20 @@ module VagrantLXD
       yield File.join(tmpdir, 'rootfs.tar.gz')
     ensure
       FileUtils.rm_rf(tmpdir)
+    end
+
+    def generate_machine_id
+      "vagrant-#{File.basename(Dir.pwd)}-#{@machine.name}-#{SecureRandom.hex(8)}"
+    end
+
+    def error(klass)
+      klass.new(
+        provider: Version::NAME,
+        machine: @machine.name,
+        api_endpoint: @api_endpoint.to_s,
+        https_address: @api_endpoint.host,
+        client_cert: File.expand_path('.config/lxc/client.crt', ENV['HOME']),
+      )
     end
   end
 end

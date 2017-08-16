@@ -22,7 +22,7 @@ require 'vagrant-lxd/driver'
 module VagrantLXD
   class SyncedFolder < Vagrant.plugin('2', :synced_folder)
 
-    def usable?(machine, raise_error=false)
+    def usable?(machine, raise_error = false)
       return false unless machine.provider_name == :lxd
 
       @driver ||= Driver.new(machine)

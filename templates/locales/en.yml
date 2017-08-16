@@ -14,27 +14,40 @@ en:
         The provider was unable to contact the LXD daemon at %{api_endpoint}.
         
         It's possible that LXD isn't installed, or that it isn't configured to
-        accept HTTP connections from your machine. You can check whether HTTP
-        access is enabled, and whether your machine is allowed to use it, with
-        the following commands:
+        accept HTTPS connections from your machine. You can check whether HTTPS
+        access is enabled with the following command:
         
             $ lxc config show core.https_address
-            $ lxc config trust list
         
-        If either result is empty, you will need to correct the way LXD is
+        If the result is empty, you will need to correct the way LXD is
         configured before Vagrant can use it. This can be done with the
-        following commands (it's safe to run them more than once):
+        following command:
         
-            $ sudo service lxd start
-            $ sudo lxd init --auto
             $ lxc config set core.https_address %{https_address}
+        
+        You can find more documentation about configuring LXD at:
+        
+            https://linuxcontainers.org/lxd/getting-started-cli/#initial-configuration
+        
+      lxd_authentication_failure: |-
+        The provider could not authenticate to the LXD daemon at %{api_endpoint}.
+        
+        You may need configure LXD to allow requests from this machine. The
+        easiest way to do this is to add your LXC client certificate to LXD's
+        list of trusted certificates. This can typically be done with the
+        following command:
+        
             $ lxc config trust add %{client_cert}
+        
+        You can find more information about configuring LXD at:
+
+            https://linuxcontainers.org/lxd/getting-started-cli/#initial-configuration
         
       lxd_operation_timeout: |-
         The container failed to respond within %{time_limit} seconds. Try
         running the following command to see whether an error occurs:
         
-            $ lxc %{operation} %{container_name}
+            $ lxc %{operation} %{machine_id}
         
         If that command runs successfully, there may be a bug in the LXD
         provider. If this is the case, please submit an issue at:
