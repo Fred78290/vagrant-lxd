@@ -32,11 +32,13 @@ module VagrantLXD
       error_key 'lxd_operation_timeout'
     end
 
+    attr_reader :api_endpoint
     attr_reader :timeout
 
     def initialize(machine)
       @machine = machine
       @timeout = machine.provider_config.timeout
+      @api_endpoint = machine.provider_config.api_endpoint
       @logger = Log4r::Logger.new('vagrant::lxd')
       @lxd = Hyperkit::Client.new(api_endpoint: 'https://127.0.0.1:8443', verify_ssl: false)
       @lxd.images # basic connectivity test

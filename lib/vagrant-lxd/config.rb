@@ -17,16 +17,40 @@
 # along with vagrant-lxd. If not, see <http://www.gnu.org/licenses/>.
 #
 
+require 'uri'
+
 module VagrantLXD
   class Config < Vagrant.plugin('2', :config)
+    attr_accessor :api_endpoint
     attr_accessor :timeout
 
     def initialize
       @timeout = UNSET_VALUE
+      @api_endpoint = UNSET_VALUE
+    end
+
+    def validate(machine)
+      errors = _detected_errors
+
+      unless api_endpoint == UNSET_VALUE
+        begin
+          URI(api_endpoint).scheme == 'https' or raise URI::InvalidURIError
+        rescue URI::InvalidURIError
+          errors << "Invalid `api_endpoint' (value must be a valid HTTPS address): #{api_endpoint.inspect}"
+        end
+      end
+
+      { Version::NAME => errors }
     end
 
     def finalize!
       @timeout = timeout.to_i rescue 10
+
+      if api_endpoint == UNSET_VALUE
+        @api_endpoint = URI('https://127.0.0.1:8443')
+      else
+        @api_endpoint = URI(api_endpoint)
+      end
     end
   end
 end
