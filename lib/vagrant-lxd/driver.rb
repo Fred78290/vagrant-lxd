@@ -139,7 +139,7 @@ module VagrantLXD
       end
     rescue Hyperkit::BadRequest
       @machine.ui.warn "Container failed to start within #{timeout} seconds"
-      fail OperationTimeout, time_limit: timeout, operation: 'start', machine: machine_id
+      fail OperationTimeout, time_limit: timeout, operation: 'start', machine_id: machine_id
     end
 
     def halt
@@ -157,7 +157,7 @@ module VagrantLXD
       end
     rescue Hyperkit::BadRequest
       @machine.ui.warn "Container failed to suspend within #{timeout} seconds"
-      fail OperationTimeout, time_limit: timeout, operation: 'info', machine: machine_id
+      fail OperationTimeout, time_limit: timeout, operation: 'info', machine_id: machine_id
     end
 
     def destroy
@@ -217,7 +217,7 @@ module VagrantLXD
       end
     rescue Timeout::Error
       @logger.warn "Failed to find ipv4 address for #{machine_id} within #{timeout} seconds!"
-      fail OperationTimeout, time_limit: timeout, operation: 'info', machine: machine_id
+      fail OperationTimeout, time_limit: timeout, operation: 'info', machine_id: machine_id
     end
 
     def build_config
