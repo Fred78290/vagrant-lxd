@@ -21,6 +21,10 @@ require 'vagrant-lxd/version'
 
 module VagrantLXD
   class Command < Vagrant.plugin('2', :command)
+    def Command.synopsis
+      'manages the LXD provider'
+    end
+
     def execute
       @env.ui.info "Vagrant LXD Provider"
       @env.ui.info "Version #{Version::VERSION}"
