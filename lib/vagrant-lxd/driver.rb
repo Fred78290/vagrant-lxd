@@ -33,6 +33,10 @@ module VagrantLXD
       error_key 'lxd_operation_timeout'
     end
 
+    class NetworkAddressAcquisitionTimeout < OperationTimeout
+      error_key 'lxd_network_address_acquisition_timeout'
+    end
+
     class ConnectionFailure < Vagrant::Errors::ProviderNotUsable
       error_key 'lxd_connection_failure'
     end
@@ -217,7 +221,7 @@ module VagrantLXD
       end
     rescue Timeout::Error
       @logger.warn "Failed to find ipv4 address for #{machine_id} within #{timeout} seconds!"
-      fail OperationTimeout, time_limit: timeout, operation: 'info', machine_id: machine_id
+      fail NetworkAddressAcquisitionTimeout, time_limit: timeout, lxd_bridge: 'lxdbr0' # FIXME Hardcoded bridge name
     end
 
     def build_config

@@ -54,3 +54,17 @@ en:
         
             https://gitlab.com/catalyst-it/vagrant-lxd/issues
         
+      lxd_network_address_acquisition_timeout: |-
+        The container failed to acquire an IPv4 address within %{time_limit}
+        seconds. It's possible that the LXD network bridge has not been configured.
+        Try running the following command to see whether a bridge exists and has
+        an inet address:
+        
+            $ ip address show %{lxd_bridge}
+        
+        If that command runs successfully and the bridge appears to be correctly
+        configured, there may be a bug in the LXD provider. If this is the case,
+        please submit an issue at:
+        
+            https://gitlab.com/catalyst-it/vagrant-lxd/issues
+        
