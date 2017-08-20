@@ -29,7 +29,7 @@ Gem::Specification.new do |spec|
   spec.authors       = ['Evan Hanson']
   spec.email         = ['evanh@catalyst.net.nz']
   spec.license       = 'GPLv3'
-  spec.homepage      = 'https://gitlab.wgtn.cat-it.co.nz/evanh/vagrant-lxd'
+  spec.homepage      = 'https://gitlab.com/catalyst-it/vagrant-lxd'
   spec.require_paths = ['lib']
   spec.files         = `git ls-files -z`.split("\x0").reject do |f|
     f.match(%r{^(test|spec|features)/})
