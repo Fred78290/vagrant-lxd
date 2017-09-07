@@ -32,6 +32,14 @@ module VagrantLXD
     def validate(machine)
       errors = _detected_errors
 
+      unless timeout == UNSET_VALUE
+        if not timeout.is_a? Fixnum
+          errors << "Invalid `timeout' (value must be an integer): #{timeout.inspect}"
+        elsif timeout < 1
+          errors << "Invalid `timeout' (value must be positive): #{timeout.inspect}"
+        end
+      end
+
       unless api_endpoint == UNSET_VALUE
         begin
           URI(api_endpoint).scheme == 'https' or raise URI::InvalidURIError
@@ -44,7 +52,9 @@ module VagrantLXD
     end
 
     def finalize!
-      @timeout = timeout.to_i rescue 10
+      if timeout == UNSET_VALUE
+        @timeout = 10
+      end
 
       if api_endpoint == UNSET_VALUE
         @api_endpoint = URI('https://127.0.0.1:8443')
