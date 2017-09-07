@@ -66,6 +66,24 @@ general, we recommend [this article][1].
 
 [1]: https://insights.ubuntu.com/2017/06/15/custom-user-mappings-in-lxd-containers/
 
+### Configuration
+
+Below is an example Vagrantfile showing all of the provider's
+configurable values, along with their defaults. The `debian/stretch64`
+box is available on the Vagrant Cloud, so you should be able to copy
+this file and adjust it as you see fit.
+
+``` ruby
+Vagrant.configure('2') do |config|
+  config.vm.box = 'debian/stretch64'
+
+  config.vm.provider 'lxd' do |lxd|
+    lxd.api_endpoint = 'https://127.0.0.1:8443'
+    lxd.timeout = 10
+  end
+end
+```
+
 ## Hacking
 
 To run Vagrant with the plugin automatically loaded, you can use the
