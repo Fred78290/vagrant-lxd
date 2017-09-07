@@ -19,9 +19,9 @@ en:
         
             $ lxc config show core.https_address
         
-        If the result is empty, you will need to correct the way LXD is
-        configured before Vagrant can use it. This can be done with the
-        following command:
+        If the result is empty or an error is shown, you will need to correct
+        the way LXD is configured before Vagrant can use it. This can be done
+        with the following command:
         
             $ lxc config set core.https_address %{https_address}
         

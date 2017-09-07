@@ -23,6 +23,8 @@ The following features are not expected to work yet:
  - IPv6
  - Non-amd64 Vagrant boxes
 
+The plugin requires LXD 2.0 and Vagrant 1.8.7 or newer.
+
 ## Installation
 
 Installing the plugin from this repository is a three-step process.
@@ -50,6 +52,19 @@ Cloud][cloud] should work without modification:
     $ vagrant up --provider lxd
 
 [cloud]: https://app.vagrantup.com/boxes/search?provider=lxc
+
+### Shared Folders
+
+In order to use shared folders, you must first add your user ID to the
+host machine's subuid(5) and subgid(5) files:
+
+    # echo root:$(id -u):1 >> /etc/subuid
+    # echo root:$(id -g):1 >> /etc/subgid
+
+For more information about these commands, and user/group ID mapping in
+general, we recommend [this article][1].
+
+[1]: https://insights.ubuntu.com/2017/06/15/custom-user-mappings-in-lxd-containers/
 
 ## Hacking
 
