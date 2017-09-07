@@ -68,3 +68,8 @@ en:
         
             https://gitlab.com/catalyst-it/vagrant-lxd/issues
         
+      lxd_container_creation_failure: |-
+        The provider was unable to create a container for the '%{machine_name}' VM.
+        
+        The LXD logs may contain more information about the cause of this failure.
+        

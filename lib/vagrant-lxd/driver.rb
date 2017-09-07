@@ -45,6 +45,10 @@ module VagrantLXD
       error_key 'lxd_authentication_failure'
     end
 
+    class ContainerCreationFailure < Vagrant::Errors::VagrantError
+      error_key 'lxd_container_creation_failure'
+    end
+
     NOT_CREATED = Vagrant::MachineState::NOT_CREATED_ID
 
     attr_reader :api_endpoint
@@ -122,16 +126,24 @@ module VagrantLXD
 
     def create
       if in_state? NOT_CREATED
-        prepare_image(@machine.box) do |path|
-          id = generate_machine_id
-          image = @lxd.create_image_from_file(path, alias: id)
-          container = @lxd.create_container(id, fingerprint: image[:metadata][:fingerprint], config: build_config)
-          @lxd.create_image_alias(image[:metadata][:fingerprint], id)
-          @logger.debug 'Created image: ' << image.inspect
-          @logger.debug 'Created container: ' << container.inspect
-          @machine.id = id
-        end
+        id = generate_machine_id
+
+        image = prepare_image { |f| @lxd.create_image_from_file(f, alias: id) }
+        @logger.debug 'Created image: ' << image.inspect
+
+        container = @lxd.create_container(id, fingerprint: image[:metadata][:fingerprint], config: config)
+        @logger.debug 'Created container: ' << container.inspect
+
+        image_alias = @lxd.create_image_alias(image[:metadata][:fingerprint], id)
+        @logger.debug 'Created image alias: ' << image_alias.inspect
+
+        @machine.id = id
       end
+    rescue Hyperkit::BadRequest
+      @lxd.delete_container(id) rescue nil unless container.nil?
+      @lxd.delete_image(image[:metadata][:fingerprint]) rescue nil unless image.nil?
+      @machine.ui.error "Failed to create container"
+      fail ContainerCreationFailure, machine_name: @machine.name
     end
 
     def resume
@@ -224,7 +236,7 @@ module VagrantLXD
       fail NetworkAddressAcquisitionTimeout, time_limit: timeout, lxd_bridge: 'lxdbr0' # FIXME Hardcoded bridge name
     end
 
-    def build_config
+    def config
       config = {}
 
       # Set "raw.idmap" if the host's sub{u,g}id configuration allows it.
@@ -246,9 +258,9 @@ module VagrantLXD
       config
     end
 
-    def prepare_image(box)
+    def prepare_image
       tmpdir = Dir.mktmpdir
-      rootfs = box.directory / 'rootfs.tar.gz'
+      rootfs = @machine.box.directory / 'rootfs.tar.gz'
 
       @machine.ui.info 'Converting LXC image to LXD format...'
 
