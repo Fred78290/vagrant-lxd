@@ -45,7 +45,7 @@ Installing the plugin from this repository is a three-step process.
 
 ### Quick Start
 
-This plugin understands the `lxc` box format, so VM images from [Vagrant
+This plugin reuses the `lxc` box format, so VM images from [Vagrant
 Cloud][cloud] should work without modification:
 
     $ vagrant init --minimal debian/stretch64

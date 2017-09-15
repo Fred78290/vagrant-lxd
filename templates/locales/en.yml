@@ -73,3 +73,15 @@ en:
         
         The LXD logs may contain more information about the cause of this failure.
         
+      lxd_image_creation_failure: |-
+        The provider was unable to create an LXD image for the '%{machine_name}' VM.
+        
+        The underlying error message was:
+        
+            %{error_message}
+        
+        This may be a bug in the LXD provider. If you think this is the case,
+        please submit an issue at:
+        
+            https://gitlab.com/catalyst-it/vagrant-lxd/issues
+        

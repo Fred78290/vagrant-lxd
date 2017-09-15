@@ -49,6 +49,10 @@ module VagrantLXD
       error_key 'lxd_container_creation_failure'
     end
 
+    class ImageCreationFailure < ContainerCreationFailure
+      error_key 'lxd_image_creation_failure'
+    end
+
     NOT_CREATED = Vagrant::MachineState::NOT_CREATED_ID
 
     attr_reader :api_endpoint
@@ -128,7 +132,7 @@ module VagrantLXD
       if in_state? NOT_CREATED
         id = generate_machine_id
 
-        image = prepare_image { |f| @lxd.create_image_from_file(f, alias: id) }
+        image = @lxd.create_image_from_file(prepare_image, alias: id)
         @logger.debug 'Created image: ' << image.inspect
 
         container = @lxd.create_container(id, fingerprint: image[:metadata][:fingerprint], config: config)
@@ -142,7 +146,7 @@ module VagrantLXD
     rescue Hyperkit::BadRequest
       @lxd.delete_container(id) rescue nil unless container.nil?
       @lxd.delete_image(image[:metadata][:fingerprint]) rescue nil unless image.nil?
-      @machine.ui.error "Failed to create container"
+      @machine.ui.error 'Failed to create container'
       fail ContainerCreationFailure, machine_name: @machine.name
     end
 
@@ -259,25 +263,36 @@ module VagrantLXD
     end
 
     def prepare_image
-      tmpdir = Dir.mktmpdir
-      rootfs = @machine.box.directory / 'rootfs.tar.gz'
+      lxc_dir = @machine.box.directory
+      lxc_rootfs = lxc_dir / 'rootfs.tar.gz'
 
-      @machine.ui.info 'Converting LXC image to LXD format...'
+      lxd_dir = @machine.box.directory / '..' / 'lxd'
+      lxd_rootfs = lxd_dir / 'rootfs.tar.gz'
 
-      SafeChdir.safe_chdir(tmpdir) do
-        FileUtils.cp(rootfs, tmpdir)
-        Subprocess.execute('gunzip', 'rootfs.tar.gz')
-        File.open('metadata.yaml', 'w') do |metadata|
-          metadata.puts 'architecture: x86_64'
-          metadata.puts 'creation_date: ' << Time.now.strftime('%s')
+      lxc_md5sum = Digest::MD5.hexdigest(File.read(lxc_rootfs))
+      lxd_metadata = YAML.load(File.read(lxd_dir / 'metadata.yaml')) rescue nil
+
+      unless lxd_rootfs.exist? and lxd_metadata.is_a?(Hash) and lxd_metadata['source_rootfs_md5sum'] == lxc_md5sum
+        @machine.ui.info 'Converting LXC image to LXD format...'
+        FileUtils.mkdir_p(lxd_dir)
+        SafeChdir.safe_chdir(lxd_dir) do
+          FileUtils.cp(lxc_rootfs, '.')
+          File.open('metadata.yaml', 'w') do |metadata|
+            metadata.puts 'architecture: ' << `uname -m`.strip
+            metadata.puts 'creation_date: ' << Time.now.strftime('%s')
+            metadata.puts 'source_rootfs_md5sum: ' << lxc_md5sum
+          end
+          Subprocess.execute('gunzip', 'rootfs.tar.gz')
+          Subprocess.execute('tar', '-rf', 'rootfs.tar', 'metadata.yaml')
+          Subprocess.execute('gzip', 'rootfs.tar')
         end
-        Subprocess.execute('tar', '-rf', 'rootfs.tar', 'metadata.yaml')
-        Subprocess.execute('gzip', 'rootfs.tar')
       end
 
-      yield File.join(tmpdir, 'rootfs.tar.gz')
-    ensure
-      FileUtils.rm_rf(tmpdir)
+      lxd_rootfs
+    rescue Exception => e
+      @machine.ui.error 'Failed to create LXD image for container'
+      @logger.error 'Error preparing LXD image: ' << e.message << "\n" << e.backtrace.join("\n")
+      fail ImageCreationFailure, machine_name: @machine.name, error_message: e.message
     end
 
     def generate_machine_id
