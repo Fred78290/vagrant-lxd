@@ -13,7 +13,6 @@ The following features are currently supported:
  - Basic VM management (create, suspend, destroy, etc.)
  - Automatic network configuration
  - Synced folders
- - Existing amd64 Vagrant boxes
 
 The following features are not expected to work yet:
 
@@ -21,7 +20,6 @@ The following features are not expected to work yet:
  - Forwarded ports
  - Static IP addresses
  - IPv6
- - Non-amd64 Vagrant boxes
 
 The plugin requires LXD 2.0 and Vagrant 1.8.7 or newer.
 
@@ -65,6 +63,28 @@ For more information about these commands, and user/group ID mapping in
 general, we recommend [this article][1].
 
 [1]: https://insights.ubuntu.com/2017/06/15/custom-user-mappings-in-lxd-containers/
+
+### Shared LXD Containers
+
+It's possible to share a single LXD container between multiple Vagrant
+VMs by "attaching" them to the container by name.
+
+For example, to associate the "default" VM with a preexisting LXD
+container called "my-container", use the `vagrant lxd attach` command:
+
+    
+    $ lxc list -cn # list available containers
+    +--------------+
+    |     NAME     |
+    +--------------+
+    | my-container |
+    +--------------+
+    
+    $ vagrant lxd detach default # detach from current container, if necessary
+    ==> default: Machine is not attached to a container, skipping...
+    
+    $ vagrant lxd attach default my-container
+    ==> default: Attaching to container 'my-container'...
 
 ### Configuration
 
