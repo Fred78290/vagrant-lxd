@@ -111,7 +111,7 @@ module VagrantLXD
     def unmount(name, options)
       container = @lxd.container(machine_id)
       devices = container[:devices].to_hash
-      devices.delete(:vagrant)
+      devices.delete(name)
       container[:devices] = devices
       @lxd.update_container(machine_id, container)
     end
