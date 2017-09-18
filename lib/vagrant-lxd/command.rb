@@ -17,6 +17,9 @@
 # along with vagrant-lxd. If not, see <http://www.gnu.org/licenses/>.
 #
 
+require 'vagrant/machine_state'
+
+require 'vagrant-lxd/driver'
 require 'vagrant-lxd/version'
 
 module VagrantLXD
@@ -26,8 +29,114 @@ module VagrantLXD
     end
 
     def execute
-      @env.ui.info "Vagrant LXD Provider"
-      @env.ui.info "Version #{Version::VERSION}"
+      main, subcommand, args = split_main_and_subcommand(@argv)
+
+      opts = OptionParser.new do |o|
+        o.banner = 'Usage: vagrant lxd <command>'
+        o.separator ''
+        o.separator 'Commands:'
+        o.separator '     attach    associate machine with a running container'
+        o.separator '     detach    disassociate machine from a running container'
+        o.separator '     version   print current plugin version'
+        o.separator ''
+        o.separator 'For help on a specific command, run `vagrant lxd <command> -h`'
+      end
+
+      if main.include?('-h') or main.include?('--help')
+        @env.ui.info opts.help
+        exit 0
+      end
+
+      case subcommand
+      when 'attach'
+        attach(args)
+      when 'detach'
+        detach(args)
+      when 'version'
+        @env.ui.info 'Vagrant LXD Provider'
+        @env.ui.info 'Version ' << Version::VERSION
+      else
+        fail Vagrant::Errors::CLIInvalidUsage, help: opts.help
+      end
+    end
+
+    def attach(args)
+      opts = OptionParser.new do |o|
+        o.banner = 'Usage: vagrant lxd attach [machine ...] <container>'
+        o.separator ''
+        o.separator 'Associates a VM with a preexisting LXD container.'
+        o.separator ''
+        o.separator 'This command can be used to attach an inactive (not created) VM to a'
+        o.separator 'preexisting LXD container. Once it has been associated with a container,'
+        o.separator 'the machine can be used just like it had been created with `vagrant up`'
+        o.separator 'or detached from the container again with `vagrant lxd detach`.'
+      end
+
+      if args.include?('-h') or args.include?('--help')
+        @env.ui.info opts.help
+        exit 0
+      end
+
+      unless container = args.pop
+        fail Vagrant::Errors::CLIInvalidUsage, help: opts.help
+      end
+
+      with_target_machines(args) do |machine|
+        if machine.id == container
+          machine.ui.warn "Machine is already attached to container '#{container}', skipping..."
+        elsif machine.state.id == Vagrant::MachineState::NOT_CREATED_ID
+          machine.ui.info "Attaching to container '#{container}'..."
+          Driver.new(machine).attach(container)
+        else
+          machine.ui.error "Machine is already attached to container '#{machine.id}'"
+          fail Driver::DuplicateAttachmentFailure, machine_name: machine.name, container: container
+        end
+      end
+    end
+
+    def detach(args)
+      opts = OptionParser.new do |o|
+        o.banner = 'Usage: vagrant lxd detach [machine ...]'
+        o.separator ''
+        o.separator 'Disassociates a VM from its LXD container.'
+        o.separator ''
+        o.separator 'This command can be used to deactivate a VM without destroying the'
+        o.separator 'underlying container. Once detached, the machine can be recreated'
+        o.separator 'from scratch with `vagrant up` or associated to a different container'
+        o.separator 'by using `vagrant lxd attach`.'
+      end
+
+      if args.include?('-h') or args.include?('--help')
+        @env.ui.info opts.help
+        exit 0
+      end
+
+      with_target_machines(args) do |machine|
+        if machine.id.nil? or machine.state.id == Vagrant::MachineState::NOT_CREATED_ID
+          machine.ui.warn "Machine is not attached to a container, skipping..."
+        else
+          driver = Driver.new(machine)
+          machine.ui.info "Detaching from container '#{driver.machine_id}'..."
+          driver.detach
+        end
+      end
+    end
+
+    def with_target_machines(args)
+      machines = args.map(&:to_sym)
+
+      # NOTE We collect all vm names here in order to force Vagrant to
+      # load a full local environment, including provider configurations.
+      vms = with_target_vms { |_| }.map(&:name)
+
+      # Validate machine names.
+      unless vms | machines == vms
+        fail Vagrant::Errors::MachineNotFound, name: (machines - vms).first
+      end
+
+      machines.each do |name|
+        yield @env.machine(name, :lxd)
+      end
     end
   end
 end

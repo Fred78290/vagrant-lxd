@@ -53,6 +53,14 @@ module VagrantLXD
       error_key 'lxd_image_creation_failure'
     end
 
+    class ContainerNotFound < Vagrant::Errors::VagrantError
+      error_key 'lxd_container_not_found'
+    end
+
+    class DuplicateAttachmentFailure < Vagrant::Errors::VagrantError
+      error_key 'lxd_duplicate_attachment_failure'
+    end
+
     NOT_CREATED = Vagrant::MachineState::NOT_CREATED_ID
 
     attr_reader :api_endpoint
@@ -114,6 +122,23 @@ module VagrantLXD
       devices.delete(name)
       container[:devices] = devices
       @lxd.update_container(machine_id, container)
+    end
+
+    def attach(container)
+      @lxd.container(container) # Query LXD to make sure the container exists.
+
+      if in_state? NOT_CREATED
+        @machine.id = container
+      else
+        fail DuplicateAttachmentFailure, machine_name: @machine.name, container: container
+      end
+    rescue Hyperkit::NotFound
+      @machine.ui.error "Container doesn't exist: #{container}"
+      fail ContainerNotFound, container: container
+    end
+
+    def detach
+      @machine.id = nil
     end
 
     def container

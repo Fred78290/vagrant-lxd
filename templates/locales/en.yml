@@ -85,3 +85,13 @@ en:
         
             https://gitlab.com/catalyst-it/vagrant-lxd/issues
         
+      lxd_duplicate_attachment_failure: |-
+        A machine can only be associated with one container at a time.
+        
+        To attach '%{machine_name}' to '%{container}', you must first
+        detach it from its current container using `vagrant lxd detach`.
+        
+      lxd_container_not_found: |-
+        The requested container '%{container}' doesn't exist.
+        
+        You can list available containers with the `lxc list` command.
