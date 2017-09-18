@@ -22,10 +22,12 @@ require 'uri'
 module VagrantLXD
   class Config < Vagrant.plugin('2', :config)
     attr_accessor :api_endpoint
+    attr_accessor :ephemeral
     attr_accessor :timeout
 
     def initialize
       @timeout = UNSET_VALUE
+      @ephemeral = UNSET_VALUE
       @api_endpoint = UNSET_VALUE
     end
 
@@ -48,10 +50,18 @@ module VagrantLXD
         end
       end
 
+      unless [UNSET_VALUE, true, false].include?(ephemeral)
+        errors << "Invalid `ephemeral' (value must be true or false): #{ephemeral.inspect}"
+      end
+
       { Version::NAME => errors }
     end
 
     def finalize!
+      if ephemeral == UNSET_VALUE
+        @ephemeral = false
+      end
+
       if timeout == UNSET_VALUE
         @timeout = 10
       end

@@ -72,7 +72,6 @@ VMs by "attaching" them to the container by name.
 For example, to associate the "default" VM with a preexisting LXD
 container called "my-container", use the `vagrant lxd attach` command:
 
-    
     $ lxc list -cn # list available containers
     +--------------+
     |     NAME     |
@@ -99,6 +98,7 @@ Vagrant.configure('2') do |config|
 
   config.vm.provider 'lxd' do |lxd|
     lxd.api_endpoint = 'https://127.0.0.1:8443'
+    lxd.ephemeral = false
     lxd.timeout = 10
   end
 end
