@@ -130,18 +130,23 @@ module VagrantLXD
 
     def create
       if in_state? NOT_CREATED
-        id = generate_machine_id
+        machine_id = generate_machine_id
+        file, fingerprint = prepare_image_file
 
-        image = @lxd.create_image_from_file(prepare_image, alias: id)
-        @logger.debug 'Created image: ' << image.inspect
+        begin
+          image = @lxd.image(fingerprint)
+          @logger.debug 'Using image: ' << image.inspect
+        rescue Hyperkit::NotFound
+          image = @lxd.create_image_from_file(file)
+          image_alias = @lxd.create_image_alias(fingerprint, machine_id)
+          @logger.debug 'Created image: ' << image.inspect
+          @logger.debug 'Created image alias: ' << image_alias.inspect
+        end
 
-        container = @lxd.create_container(id, fingerprint: image[:metadata][:fingerprint], config: config)
+        container = @lxd.create_container(machine_id, fingerprint: fingerprint, config: config)
         @logger.debug 'Created container: ' << container.inspect
 
-        image_alias = @lxd.create_image_alias(image[:metadata][:fingerprint], id)
-        @logger.debug 'Created image alias: ' << image_alias.inspect
-
-        @machine.id = id
+        @machine.id = machine_id
       end
     rescue Hyperkit::BadRequest
       @lxd.delete_container(id) rescue nil unless container.nil?
@@ -210,6 +215,8 @@ module VagrantLXD
       @lxd.delete_image(container[:config][:'volatile.base_image'])
     rescue Hyperkit::NotFound
       @logger.warn "Image for '#{machine_id}' not found, unable to destroy"
+    rescue Hyperkit::BadRequest
+      @logger.error "Unable to delete image for '#{machine_id}'"
     end
 
   private
@@ -262,37 +269,46 @@ module VagrantLXD
       config
     end
 
-    def prepare_image
+    def prepare_image_file
+      tmpdir = Dir.mktmpdir
+
       lxc_dir = @machine.box.directory
       lxc_rootfs = lxc_dir / 'rootfs.tar.gz'
+      lxc_fingerprint = Digest::SHA256.file(lxc_rootfs).hexdigest
 
       lxd_dir = @machine.box.directory / '..' / 'lxd'
       lxd_rootfs = lxd_dir / 'rootfs.tar.gz'
-
-      lxc_md5sum = Digest::MD5.hexdigest(File.read(lxc_rootfs))
       lxd_metadata = YAML.load(File.read(lxd_dir / 'metadata.yaml')) rescue nil
 
-      unless lxd_rootfs.exist? and lxd_metadata.is_a?(Hash) and lxd_metadata['source_rootfs_md5sum'] == lxc_md5sum
+      unless lxd_rootfs.exist? and lxd_metadata.is_a? Hash and lxd_metadata['source_fingerprint'] == lxc_fingerprint
         @machine.ui.info 'Converting LXC image to LXD format...'
-        FileUtils.mkdir_p(lxd_dir)
-        SafeChdir.safe_chdir(lxd_dir) do
-          FileUtils.cp(lxc_rootfs, '.')
+
+        SafeChdir.safe_chdir(tmpdir) do
+          FileUtils.cp(lxc_rootfs, tmpdir)
+
           File.open('metadata.yaml', 'w') do |metadata|
             metadata.puts 'architecture: ' << `uname -m`.strip
             metadata.puts 'creation_date: ' << Time.now.strftime('%s')
-            metadata.puts 'source_rootfs_md5sum: ' << lxc_md5sum
+            metadata.puts 'source_fingerprint: ' << lxc_fingerprint
           end
+
           Subprocess.execute('gunzip', 'rootfs.tar.gz')
           Subprocess.execute('tar', '-rf', 'rootfs.tar', 'metadata.yaml')
           Subprocess.execute('gzip', 'rootfs.tar')
+
+          FileUtils.mkdir_p(lxd_dir)
+          FileUtils.mv('rootfs.tar.gz', lxd_dir)
+          FileUtils.mv('metadata.yaml', lxd_dir)
         end
       end
 
-      lxd_rootfs
+      return lxd_rootfs, Digest::SHA256.file(lxd_rootfs).hexdigest
     rescue Exception => e
       @machine.ui.error 'Failed to create LXD image for container'
       @logger.error 'Error preparing LXD image: ' << e.message << "\n" << e.backtrace.join("\n")
       fail ImageCreationFailure, machine_name: @machine.name, error_message: e.message
+    ensure
+      FileUtils.rm_rf(tmpdir)
     end
 
     def generate_machine_id
