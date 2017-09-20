@@ -57,14 +57,35 @@ module VagrantLXD
       error_key 'lxd_container_not_found'
     end
 
+    class ContainerAlreadyExists < Vagrant::Errors::VagrantError
+      error_key 'lxd_container_already_exists'
+    end
+
     class DuplicateAttachmentFailure < Vagrant::Errors::VagrantError
       error_key 'lxd_duplicate_attachment_failure'
+    end
+
+    class Hyperkit::BadRequest
+      def reason
+        return unless data.is_a? Hash
+
+        if error = data[:error]
+          return error unless error.empty?
+        end
+
+        if metadata = data[:metadata] and err = metadata[:err]
+          return err unless err.empty?
+        end
+
+        'No reason could be determined'
+      end
     end
 
     NOT_CREATED = Vagrant::MachineState::NOT_CREATED_ID
 
     attr_reader :api_endpoint
     attr_reader :ephemeral
+    attr_reader :name
     attr_reader :timeout
 
     def initialize(machine)
@@ -72,6 +93,7 @@ module VagrantLXD
       @timeout = machine.provider_config.timeout
       @api_endpoint = machine.provider_config.api_endpoint
       @ephemeral = machine.provider_config.ephemeral
+      @name = machine.provider_config.name
       @logger = Log4r::Logger.new('vagrant::lxd')
       @lxd = Hyperkit::Client.new(api_endpoint: api_endpoint.to_s, verify_ssl: false)
     end
@@ -175,11 +197,16 @@ module VagrantLXD
 
         @machine.id = machine_id
       end
-    rescue Hyperkit::BadRequest
+    rescue Hyperkit::BadRequest => e
       @lxd.delete_container(id) rescue nil unless container.nil?
       @lxd.delete_image(image[:metadata][:fingerprint]) rescue nil unless image.nil?
-      @machine.ui.error 'Failed to create container'
-      fail ContainerCreationFailure, machine_name: @machine.name
+      if e.reason =~ /Container '([^']+)' already exists/
+        @machine.ui.error e.reason
+        fail ContainerAlreadyExists, machine_name: @machine.name, container: $1
+      else
+        @machine.ui.error "Failed to create container"
+        fail ContainerCreationFailure, machine_name: @machine.name, reason: e.reason
+      end
     end
 
     def resume
@@ -307,7 +334,9 @@ module VagrantLXD
       lxd_rootfs = lxd_dir / 'rootfs.tar.gz'
       lxd_metadata = YAML.load(File.read(lxd_dir / 'metadata.yaml')) rescue nil
 
-      unless lxd_rootfs.exist? and lxd_metadata.is_a? Hash and lxd_metadata['source_fingerprint'] == lxc_fingerprint
+      if lxd_rootfs.exist? and lxd_metadata.is_a? Hash and lxd_metadata['source_fingerprint'] == lxc_fingerprint
+        @machine.ui.info 'Importing LXC image...'
+      else
         @machine.ui.info 'Converting LXC image to LXD format...'
 
         SafeChdir.safe_chdir(tmpdir) do
@@ -339,9 +368,11 @@ module VagrantLXD
     end
 
     def generate_machine_id
-      id = "vagrant-#{File.basename(Dir.pwd)}-#{@machine.name}-#{SecureRandom.hex(8)}"
-      id = id.slice(0...63).gsub(/[^a-zA-Z0-9]/, '-')
-      id
+      @name || begin
+        id = "vagrant-#{File.basename(Dir.pwd)}-#{@machine.name}-#{SecureRandom.hex(8)}"
+        id = id.slice(0...63).gsub(/[^a-zA-Z0-9]/, '-')
+        id
+      end
     end
 
     def error(klass)

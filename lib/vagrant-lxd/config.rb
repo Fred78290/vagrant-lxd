@@ -22,10 +22,12 @@ require 'uri'
 module VagrantLXD
   class Config < Vagrant.plugin('2', :config)
     attr_accessor :api_endpoint
+    attr_accessor :name
     attr_accessor :ephemeral
     attr_accessor :timeout
 
     def initialize
+      @name = UNSET_VALUE
       @timeout = UNSET_VALUE
       @ephemeral = UNSET_VALUE
       @api_endpoint = UNSET_VALUE
@@ -33,6 +35,16 @@ module VagrantLXD
 
     def validate(machine)
       errors = _detected_errors
+
+      unless name == UNSET_VALUE
+        if not name.is_a? String
+          errors << "Invalid `name' (value must be a string): #{name.inspect}"
+        elsif name.size >= 64
+          errors << "Invalid `name' (value must be less than 64 characters): #{name.inspect}"
+        elsif name =~ /[^a-zA-Z0-9-]/
+          errors << "Invalid `name' (value must contain only letters, numbers, and hyphens): #{name.inspect}"
+        end
+      end
 
       unless timeout == UNSET_VALUE
         if not timeout.is_a? Fixnum
@@ -58,6 +70,10 @@ module VagrantLXD
     end
 
     def finalize!
+      if name == UNSET_VALUE
+        @name = nil
+      end
+
       if ephemeral == UNSET_VALUE
         @ephemeral = false
       end

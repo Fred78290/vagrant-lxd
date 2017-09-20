@@ -71,6 +71,8 @@ en:
       lxd_container_creation_failure: |-
         The provider was unable to create a container for the '%{machine_name}' VM.
         
+        %{reason}.
+        
         The LXD logs may contain more information about the cause of this failure.
         
       lxd_image_creation_failure: |-
@@ -95,3 +97,9 @@ en:
         The requested container '%{container}' doesn't exist.
         
         You can list available containers with the `lxc list` command.
+      lxd_container_already_exists: |-
+        A container with the name '%{container}' already exists.
+        
+        You will either need to delete this container and try again, or attach
+        the VM to it with `vagrant lxd attach %{machine_name} %{container}`.
+        

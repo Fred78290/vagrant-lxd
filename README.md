@@ -51,6 +51,26 @@ Cloud][cloud] should work without modification:
 
 [cloud]: https://app.vagrantup.com/boxes/search?provider=lxc
 
+#### Configuration
+
+Below is an example Vagrantfile showing all of the provider's
+configurable values, along with their defaults. The `debian/stretch64`
+box is available on the Vagrant Cloud, so you should be able to copy
+this file and adjust it as you see fit.
+
+``` ruby
+Vagrant.configure('2') do |config|
+  config.vm.box = 'debian/stretch64'
+
+  config.vm.provider 'lxd' do |lxd|
+    lxd.api_endpoint = 'https://127.0.0.1:8443'
+    lxd.timeout = 10
+    lxd.name = nil
+    lxd.ephemeral = false
+  end
+end
+```
+
 ### Shared Folders
 
 In order to use shared folders, you must first add your user ID to the
@@ -84,25 +104,6 @@ container called "my-container", use the `vagrant lxd attach` command:
     
     $ vagrant lxd attach default my-container
     ==> default: Attaching to container 'my-container'...
-
-### Configuration
-
-Below is an example Vagrantfile showing all of the provider's
-configurable values, along with their defaults. The `debian/stretch64`
-box is available on the Vagrant Cloud, so you should be able to copy
-this file and adjust it as you see fit.
-
-``` ruby
-Vagrant.configure('2') do |config|
-  config.vm.box = 'debian/stretch64'
-
-  config.vm.provider 'lxd' do |lxd|
-    lxd.api_endpoint = 'https://127.0.0.1:8443'
-    lxd.ephemeral = false
-    lxd.timeout = 10
-  end
-end
-```
 
 ## Hacking
 
