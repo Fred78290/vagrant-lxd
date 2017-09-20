@@ -36,7 +36,7 @@ module VagrantLXD
     def validate(machine)
       errors = _detected_errors
 
-      unless name == UNSET_VALUE
+      unless [UNSET_VALUE, nil].include? name
         if not name.is_a? String
           errors << "Invalid `name' (value must be a string): #{name.inspect}"
         elsif name.size >= 64
@@ -62,7 +62,7 @@ module VagrantLXD
         end
       end
 
-      unless [UNSET_VALUE, true, false].include?(ephemeral)
+      unless [UNSET_VALUE, true, false].include? ephemeral
         errors << "Invalid `ephemeral' (value must be true or false): #{ephemeral.inspect}"
       end
 
