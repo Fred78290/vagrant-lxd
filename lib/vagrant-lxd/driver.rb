@@ -197,7 +197,7 @@ module VagrantLXD
 
         @machine.id = machine_id
       end
-    rescue Hyperkit::BadRequest => e
+    rescue Hyperkit::Error => e
       @lxd.delete_container(id) rescue nil unless container.nil?
       @lxd.delete_image(image[:metadata][:fingerprint]) rescue nil unless image.nil?
       if e.reason =~ /Container '([^']+)' already exists/
