@@ -129,6 +129,9 @@ module VagrantLXD
       # load a full local environment, including provider configurations.
       vms = with_target_vms { |_| }.map(&:name)
 
+      # When no machines are given, act on all of them.
+      machines = vms if machines.empty?
+
       # Validate machine names.
       unless vms | machines == vms
         fail Vagrant::Errors::MachineNotFound, name: (machines - vms).first
