@@ -140,10 +140,22 @@ module VagrantLXD
       @lxd.update_container(machine_id, container)
     end
 
+    def mounted?(name, options)
+      container = @lxd.container(machine_id)
+      devices = container[:devices].to_hash
+      name = name.to_sym
+      begin
+        devices[name] and
+        devices[name][:type] == 'disk' and
+        devices[name][:path] == options[:guestpath] and
+        devices[name][:source] == options[:hostpath]
+      end
+    end
+
     def unmount(name, options)
       container = @lxd.container(machine_id)
       devices = container[:devices].to_hash
-      devices.delete(name)
+      devices.delete(name.to_sym)
       container[:devices] = devices
       @lxd.update_container(machine_id, container)
     end

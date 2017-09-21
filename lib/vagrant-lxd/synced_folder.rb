@@ -39,7 +39,19 @@ module VagrantLXD
     # TODO Figure out the proper way to mount folders before
     # provisioning without using `#prepare` (which is deprecated).
     def prepare(machine, folders, opts)
+      enable(machine, folders, opts)
+    end
+
+    def enable(machine, folders, opts)
       usable?(machine, true)
+
+      # Skip any folders that are already attached.
+      # TODO This could be made less chatty by fetching the whole list
+      # of devices up front and comparing the incoming folders to that.
+      folders = folders.reject do |name, folder|
+        @driver.mounted?(name, folder)
+      end
+
       if folders.any?
         machine.ui.info 'Mounting shared folders...'
         folders.reject { |_, f| f[:disabled] }.each do |name, folder|
@@ -51,6 +63,7 @@ module VagrantLXD
 
     def disable(machine, folders, opts)
       usable?(machine, true)
+
       if folders.any?
         machine.ui.info 'Unmounting shared folders...'
         folders.reject { |_, f| f[:disabled] }.each do |name, folder|
