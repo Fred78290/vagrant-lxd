@@ -98,29 +98,9 @@ module VagrantLXD
       @lxd = Hyperkit::Client.new(api_endpoint: api_endpoint.to_s, verify_ssl: false)
     end
 
-    def machine_id
-      @machine.id
-    end
-
     def validate!
       raise error(ConnectionFailure) unless connection_usable?
       raise error(AuthenticationFailure) unless authentication_usable?
-    end
-
-    def connection_usable?
-      @lxd.images
-    rescue Faraday::ConnectionFailed
-      false
-    else
-      true
-    end
-
-    def authentication_usable?
-      connection_usable? and @lxd.containers
-    rescue Hyperkit::Forbidden
-      false
-    else
-      true
     end
 
     def synced_folders_usable?
@@ -175,10 +155,6 @@ module VagrantLXD
 
     def detach
       @machine.id = nil
-    end
-
-    def container
-      @lxd.container(machine_id)
     end
 
     #
@@ -289,7 +265,7 @@ module VagrantLXD
       end
     end
 
-  protected
+  private
 
     def delete_container
       @lxd.delete_container(machine_id)
@@ -305,7 +281,37 @@ module VagrantLXD
       @logger.error "Unable to delete image for '#{machine_id}'"
     end
 
-  private
+    def container
+      @lxd.container(machine_id)
+    end
+
+    def connection_usable?
+      @lxd.images
+    rescue Faraday::ConnectionFailed
+      false
+    else
+      true
+    end
+
+    def authentication_usable?
+      connection_usable? and @lxd.containers
+    rescue Hyperkit::Forbidden
+      false
+    else
+      true
+    end
+
+    def machine_id
+      @machine.id
+    end
+
+    def generate_machine_id
+      @name || begin
+        id = "vagrant-#{File.basename(Dir.pwd)}-#{@machine.name}-#{SecureRandom.hex(8)}"
+        id = id.slice(0...63).gsub(/[^a-zA-Z0-9]/, '-')
+        id
+      end
+    end
 
     def in_state?(*any)
       any.include?(state)
@@ -397,14 +403,6 @@ module VagrantLXD
       fail ImageCreationFailure, machine_name: @machine.name, error_message: e.message
     ensure
       FileUtils.rm_rf(tmpdir)
-    end
-
-    def generate_machine_id
-      @name || begin
-        id = "vagrant-#{File.basename(Dir.pwd)}-#{@machine.name}-#{SecureRandom.hex(8)}"
-        id = id.slice(0...63).gsub(/[^a-zA-Z0-9]/, '-')
-        id
-      end
     end
 
     def error(klass)
