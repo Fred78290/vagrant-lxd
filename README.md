@@ -10,16 +10,16 @@ with [LXD][].
 
 The following features are currently supported:
 
- - Basic VM management (create, suspend, destroy, etc.)
- - Automatic network configuration
+ - VM management (create, suspend, destroy, etc.)
+ - IPv4 networking
  - Synced folders
+ - Snapshots
 
 The following features are not expected to work yet:
 
- - Snapshots
  - Forwarded ports
  - Static IP addresses
- - IPv6
+ - IPv6 networking
 
 The plugin requires LXD 2.0 and Vagrant 1.8.7 or newer.
 

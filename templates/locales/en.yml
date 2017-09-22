@@ -9,6 +9,11 @@ en:
         stopped: |-
           The VM is stopped. To start it, you can run `vagrant up`, or you can
           instead run `vagrant destroy` to delete it and discard all saved state.
+    actions:
+      vm:
+        snapshot:
+          restored: |-
+            The machine has been restored to snapshot '%{name}'!
     errors:
       lxd_connection_failure: |-
         The provider was unable to contact the LXD daemon at %{api_endpoint}.

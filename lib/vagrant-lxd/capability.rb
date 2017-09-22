@@ -17,36 +17,11 @@
 # along with vagrant-lxd. If not, see <http://www.gnu.org/licenses/>.
 #
 
-require 'vagrant-lxd/version'
-
 module VagrantLXD
-  class Plugin < Vagrant.plugin('2')
-    name Version::NAME
-    description Version::DESCRIPTION
-
-    provider(:lxd, box_format: 'lxc', priority: 1) do
-      require_relative 'provider'
-      Provider
-    end
-
-    synced_folder(:lxd) do
-      require_relative 'synced_folder'
-      SyncedFolder
-    end
-
-    config(:lxd, :provider) do
-      require_relative 'config'
-      Config
-    end
-
-    command(:lxd) do
-      require_relative 'command'
-      Command
-    end
-
-    provider_capability(:lxd, 'snapshot_list') do
-      require_relative 'capability'
-      Capability
+  class Capability
+    def Capability.snapshot_list(machine)
+      env = machine.action(:snapshot_list)
+      env[:machine_snapshot_list] || []
     end
   end
 end

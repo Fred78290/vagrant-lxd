@@ -181,6 +181,26 @@ module VagrantLXD
       @lxd.container(machine_id)
     end
 
+    #
+    # The following methods correspond directly to middleware actions.
+    #
+
+    def snapshot_list
+      @lxd.snapshots(machine_id)
+    end
+
+    def snapshot_save(name)
+      @lxd.create_snapshot(machine_id, name)
+    end
+
+    def snapshot_restore(name)
+      @lxd.restore_snapshot(machine_id, name)
+    end
+
+    def snapshot_delete(name)
+      @lxd.delete_snapshot(machine_id, name)
+    end
+
     def state
       return NOT_CREATED if machine_id.nil?
       container_state = @lxd.container_state(machine_id)

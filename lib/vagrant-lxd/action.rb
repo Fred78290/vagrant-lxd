@@ -34,13 +34,14 @@ module VagrantLXD
     # retrieved with `LXD.action`.
     #
     class LXD
-      def initialize(app, env)
+      def initialize(app, env, *args)
         @app = app
+        @args = args
         @driver = Driver.new(env[:machine])
       end
 
       def call(env)
-        env[:"machine_#{method}"] = @driver.send(method)
+        env[:"machine_#{method}"] = @driver.send(method, *@args)
         @app.call(env)
       end
 
@@ -221,6 +222,63 @@ module VagrantLXD
               next
             else
               c.use Provision
+            end
+          end
+        end
+      end
+
+      def snapshot_list
+        builder do |b|
+          b.use Call, IsState, Vagrant::MachineState::NOT_CREATED_ID do |env, c|
+            if env[:result]
+              next
+            else
+              c.use LXD.action(:snapshot_list)
+            end
+          end
+        end
+      end
+
+      def snapshot_save
+        builder do |b|
+          b.use Call, IsState, Vagrant::MachineState::NOT_CREATED_ID do |env, c|
+            if env[:result]
+              next
+            else
+              c.use Message, :info, I18n.t('vagrant.actions.vm.snapshot.saving', name: env[:snapshot_name])
+              c.use LXD.action(:snapshot_save), env[:snapshot_name]
+              c.use Message, :success, I18n.t('vagrant.actions.vm.snapshot.saved', name: env[:snapshot_name])
+            end
+          end
+        end
+      end
+
+      def snapshot_restore
+        builder do |b|
+          b.use Call, IsState, Vagrant::MachineState::NOT_CREATED_ID do |env, c|
+            if env[:result]
+              next
+            else
+              c.use Message, :info, I18n.t('vagrant.actions.vm.snapshot.restoring', name: env[:snapshot_name])
+              c.use LXD.action(:snapshot_restore), env[:snapshot_name]
+              c.use Message, :success, I18n.t('vagrant.actions.vm.snapshot.restored', name: env[:snapshot_name])
+              c.use Call, IsEnvSet, :snapshot_delete do |env, d|
+                d.use snapshot_delete if env[:result]
+              end
+            end
+          end
+        end
+      end
+
+      def snapshot_delete
+        builder do |b|
+          b.use Call, IsState, Vagrant::MachineState::NOT_CREATED_ID do |env, c|
+            if env[:result]
+              next
+            else
+              c.use Message, :info, I18n.t('vagrant.actions.vm.snapshot.deleting', name: env[:snapshot_name])
+              c.use LXD.action(:snapshot_delete), env[:snapshot_name]
+              c.use Message, :info, I18n.t('vagrant.actions.vm.snapshot.deleted', name: env[:snapshot_name])
             end
           end
         end
