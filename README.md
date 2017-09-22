@@ -76,8 +76,8 @@ end
 In order to use shared folders, you must first add your user ID to the
 host machine's subuid(5) and subgid(5) files:
 
-    # echo root:$(id -u):1 >> /etc/subuid
-    # echo root:$(id -g):1 >> /etc/subgid
+    $ echo root:$(id -u):1 | sudo tee -a /etc/subuid
+    $ echo root:$(id -g):1 | sudo tee -a /etc/subgid
 
 For more information about these commands, and user/group ID mapping in
 general, we recommend [this article][1].
