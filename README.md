@@ -25,7 +25,16 @@ The plugin requires LXD 2.0 and Vagrant 1.8.7 or newer.
 
 ## Installation
 
-Installing the plugin from this repository is a three-step process.
+### From Rubygems
+
+You can install the latest version of the plugin directly from
+rubygems.org with the `vagrant plugin` command:
+
+    $ vagrant plugin install vagrant-lxd
+
+### From Git
+
+Installing from this repository is a three-step process.
 
  1. Use Bundler to install development dependencies:
     
@@ -43,12 +52,17 @@ Installing the plugin from this repository is a three-step process.
 
 ### Quick Start
 
-This plugin reuses the `lxc` box format, so VM images from [Vagrant
-Cloud][cloud] should work without modification:
+First, make sure that you've [configured LXD correctly][setting-up-lxd]
+for use with Vagrant.
+
+Once LXD is set up, you can use `vagrant up --provider lxd` to create
+container-backed machines. This plugin reuses the `lxc` box format, so
+VM images from [Vagrant Cloud][cloud] should work without modification:
 
     $ vagrant init --minimal debian/stretch64
     $ vagrant up --provider lxd
 
+[setting-up-lxd]: doc/setting-up-lxd.md
 [cloud]: https://app.vagrantup.com/boxes/search?provider=lxc
 
 #### Configuration
