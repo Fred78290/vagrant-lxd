@@ -175,11 +175,13 @@ module VagrantLXD
 
     def snapshot_save(name)
       snapshot_delete(name) # noops if the snapshot doesn't exist
-      @lxd.create_snapshot(machine_id, name)
+      operation = @lxd.create_snapshot(machine_id, name, sync: false)
+      wait_for_operation(operation)
     end
 
     def snapshot_restore(name)
-      @lxd.restore_snapshot(machine_id, name)
+      operation = @lxd.restore_snapshot(machine_id, name, sync: false)
+      wait_for_operation(operation)
     rescue Hyperkit::BadRequest
       @logger.warn 'Snapshot restoration failed: ' << name
       fail SnapshotNotFound, machine: @machine.name, snapshot_name: name
@@ -293,6 +295,15 @@ module VagrantLXD
       @logger.warn "Image for '#{machine_id}' not found, unable to destroy"
     rescue Hyperkit::BadRequest
       @logger.error "Unable to delete image for '#{machine_id}'"
+    end
+
+    # Hyperkit doesn't handle socket read timeouts even when auto_sync
+    # is enabled or setting sync: true. TODO Upstream a better fix than
+    # this, so that `wait_for_operation` really does.
+    def wait_for_operation(operation)
+      @lxd.wait_for_operation(operation.id)
+    rescue Faraday::TimeoutError
+      retry
     end
 
     def container
