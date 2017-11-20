@@ -65,6 +65,10 @@ module VagrantLXD
       error_key 'lxd_duplicate_attachment_failure'
     end
 
+    class SnapshotNotFound < Vagrant::Errors::VagrantError
+      error_key 'snapshot_not_found'
+    end
+
     class Hyperkit::BadRequest
       def reason
         return unless data.is_a? Hash
@@ -166,15 +170,21 @@ module VagrantLXD
     end
 
     def snapshot_save(name)
+      snapshot_delete(name) # noops if the snapshot doesn't exist
       @lxd.create_snapshot(machine_id, name)
     end
 
     def snapshot_restore(name)
       @lxd.restore_snapshot(machine_id, name)
+    rescue Hyperkit::BadRequest
+      @logger.warn 'Snapshot restoration failed: ' << name
+      fail SnapshotNotFound, machine: @machine.name, snapshot_name: name
     end
 
     def snapshot_delete(name)
       @lxd.delete_snapshot(machine_id, name)
+    rescue Hyperkit::NotFound
+      @logger.warn 'No such snapshot: ' << name
     end
 
     def state

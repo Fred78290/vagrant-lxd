@@ -12,6 +12,8 @@ en:
     actions:
       vm:
         snapshot:
+          not_found: |-
+            The machine has no snapshot named '%{name}'.
           restored: |-
             The machine has been restored to snapshot '%{name}'!
     errors:
@@ -108,3 +110,6 @@ en:
         You will either need to delete this container and try again, or attach
         the VM to it with `vagrant lxd attach %{machine_name} %{container}`.
         
+      snapshot_not_found: |-
+        The snapshot name `%{snapshot_name}` was not found for the
+        virtual machine `%{machine}`.
