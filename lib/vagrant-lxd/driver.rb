@@ -116,6 +116,10 @@ module VagrantLXD
       false
     end
 
+    def machine_id
+      @machine.id
+    end
+
     def mount(name, options)
       container = @lxd.container(machine_id)
       devices = container[:devices].to_hash
@@ -309,10 +313,6 @@ module VagrantLXD
       false
     else
       true
-    end
-
-    def machine_id
-      @machine.id
     end
 
     def generate_machine_id
