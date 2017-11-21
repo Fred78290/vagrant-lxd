@@ -116,10 +116,6 @@ module VagrantLXD
       false
     end
 
-    def machine_id
-      @machine.id
-    end
-
     def mount(name, options)
       container = @lxd.container(machine_id)
       devices = container[:devices].to_hash
@@ -158,7 +154,7 @@ module VagrantLXD
       end
     rescue Hyperkit::NotFound
       @machine.ui.error "Container doesn't exist: #{container}"
-      fail ContainerNotFound, container: container
+      fail ContainerNotFound, machine_name: @machine.name, container: container
     end
 
     def detach
@@ -282,6 +278,10 @@ module VagrantLXD
     end
 
   private
+
+    def machine_id
+      @machine.id
+    end
 
     def delete_container
       @lxd.delete_container(machine_id)

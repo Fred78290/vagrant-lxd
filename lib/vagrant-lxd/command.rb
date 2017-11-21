@@ -61,8 +61,10 @@ module VagrantLXD
     end
 
     def attach(args)
+      options = Hash[force: false]
+
       opts = OptionParser.new do |o|
-        o.banner = 'Usage: vagrant lxd attach [machine ...] <container>'
+        o.banner = 'Usage: vagrant lxd attach [-f] [machine ... container]'
         o.separator ''
         o.separator 'Associates a VM with a preexisting LXD container.'
         o.separator ''
@@ -70,6 +72,8 @@ module VagrantLXD
         o.separator 'preexisting LXD container. Once it has been associated with a container,'
         o.separator 'the machine can be used just like it had been created with `vagrant up`'
         o.separator 'or detached from the container again with `vagrant lxd detach`.'
+        o.separator ''
+        o.on('-f', '--force', 'Force attachment and ignore missing containers')
       end
 
       if args.include?('-h') or args.include?('--help')
@@ -77,16 +81,25 @@ module VagrantLXD
         exit 0
       end
 
-      unless container = args.pop
-        fail Vagrant::Errors::CLIInvalidUsage, help: opts.help
-      end
+      options[:force] ||= args.delete('-f')
+      options[:force] ||= args.delete('--force')
+      options[:container_name] = args.pop
 
       with_target_machines(args) do |machine|
-        if machine.id == container
+        if not container = options[:container_name] || machine.provider_config.name
+          machine.ui.warn 'No container name specified, skipping...'
+        elsif machine.id == container
           machine.ui.warn "Machine is already attached to container '#{container}', skipping..."
         elsif machine.state.id == Vagrant::MachineState::NOT_CREATED_ID
           machine.ui.info "Attaching to container '#{container}'..."
-          Driver.new(machine).attach(container)
+          begin
+            Driver.new(machine).attach(container)
+          rescue Driver::ContainerNotFound
+            raise unless options[:force]
+          end
+        elsif options[:force]
+          detach([machine.name])
+          redo
         else
           machine.ui.error "Machine is already attached to container '#{machine.id}'"
           fail Driver::DuplicateAttachmentFailure, machine_name: machine.name, container: container
@@ -115,9 +128,8 @@ module VagrantLXD
         if machine.id.nil? or machine.state.id == Vagrant::MachineState::NOT_CREATED_ID
           machine.ui.warn "Machine is not attached to a container, skipping..."
         else
-          driver = Driver.new(machine)
-          machine.ui.info "Detaching from container '#{driver.machine_id}'..."
-          driver.detach
+          machine.ui.info "Detaching from container '#{machine.id}'..."
+          Driver.new(machine).detach
         end
       end
     end

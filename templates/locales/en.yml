@@ -98,12 +98,18 @@ en:
         A machine can only be associated with one container at a time.
         
         To attach '%{machine_name}' to '%{container}', you must first
-        detach it from its current container using `vagrant lxd detach`.
+        detach it from its current container using `vagrant lxd detach`
+        or pass `--force` to force attachment.
         
       lxd_container_not_found: |-
         The requested container '%{container}' doesn't exist.
         
+        You will need to create this container first, either by using the
+        `lxc launch` command or by setting the VM's `lxd.name` in its LXD
+        provider configuration and running `vagrant up %{machine_name}`.
+        
         You can list available containers with the `lxc list` command.
+        
       lxd_container_already_exists: |-
         A container with the name '%{container}' already exists.
         
