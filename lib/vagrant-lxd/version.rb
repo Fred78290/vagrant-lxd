@@ -20,7 +20,7 @@
 module VagrantLXD
   module Version
     NAME = 'vagrant-lxd'
-    VERSION = '0.1.0'
+    VERSION = '0.1.1'
     DESCRIPTION = 'Vagrant LXD provider'
   end
 end

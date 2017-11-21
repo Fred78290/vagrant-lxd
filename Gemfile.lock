@@ -23,7 +23,7 @@ GIT
 PATH
   remote: .
   specs:
-    vagrant-lxd (0.1.0)
+    vagrant-lxd (0.1.1)
       hyperkit (~> 1.1.0)
 
 GEM
