@@ -241,13 +241,17 @@ module VagrantLXD
       fail OperationTimeout, time_limit: timeout, operation: 'start', machine_id: machine_id
     end
 
-    def halt
+    def halt(force = false)
       if in_state? :running, :frozen
-        @lxd.stop_container(machine_id, timeout: timeout)
+        @lxd.stop_container(machine_id, timeout: timeout, force: force)
       end
     rescue Hyperkit::BadRequest
-      @machine.ui.warn "Container failed to stop within #{timeout} seconds, forcing shutdown..."
-      @lxd.stop_container(machine_id, timeout: timeout, force: true)
+      if force
+        fail OperationTimeout, time_limit: timeout, operation: 'stop', machine_id: machine_id
+      else
+        @machine.ui.warn "Container failed to stop within #{timeout} seconds, forcing shutdown..."
+        halt(true)
+      end
     end
 
     def suspend
