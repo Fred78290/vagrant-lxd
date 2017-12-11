@@ -110,6 +110,7 @@ module VagrantLXD
               c.use HandleBox
               c.use LXD.action(:create)
               c.use LXD.action(:resume)
+              c.use SetHostname
               c.use SyncedFolders
               c.use WaitForCommunicator
               c.use Provision
@@ -191,6 +192,7 @@ module VagrantLXD
             when :frozen, :stopped
               c.use Message, :info, 'Resuming machine...'
               c.use LXD.action(:resume)
+              c.use SetHostname
               c.use SyncedFolders
               c.use WaitForCommunicator
               c.use Provision
