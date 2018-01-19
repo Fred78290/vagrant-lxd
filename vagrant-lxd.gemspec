@@ -28,7 +28,7 @@ Gem::Specification.new do |spec|
   spec.description   = 'A Vagrant plugin that allows management of containers using LXD.'
   spec.authors       = ['Evan Hanson']
   spec.email         = ['evanh@catalyst.net.nz']
-  spec.license       = 'GPLv3'
+  spec.license       = 'GPL-3.0'
   spec.homepage      = 'https://gitlab.com/catalyst-it/vagrant-lxd'
   spec.require_paths = ['lib']
   spec.files         = `git ls-files -z`.split("\x0").reject do |f|
