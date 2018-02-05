@@ -47,7 +47,7 @@ module VagrantLXD
       end
 
       unless timeout == UNSET_VALUE
-        if not timeout.is_a? Fixnum
+        if not timeout.is_a? Integer
           errors << "Invalid `timeout' (value must be an integer): #{timeout.inspect}"
         elsif timeout < 1
           errors << "Invalid `timeout' (value must be positive): #{timeout.inspect}"
