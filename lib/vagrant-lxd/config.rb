@@ -23,12 +23,16 @@ module VagrantLXD
   class Config < Vagrant.plugin('2', :config)
     attr_accessor :api_endpoint
     attr_accessor :name
+    attr_accessor :nesting
+    attr_accessor :privileged
     attr_accessor :ephemeral
     attr_accessor :timeout
 
     def initialize
       @name = UNSET_VALUE
       @timeout = UNSET_VALUE
+      @nesting = UNSET_VALUE
+      @privileged = UNSET_VALUE
       @ephemeral = UNSET_VALUE
       @api_endpoint = UNSET_VALUE
     end
@@ -62,6 +66,14 @@ module VagrantLXD
         end
       end
 
+      unless [UNSET_VALUE, true, false].include? nesting
+        errors << "Invalid `nesting' (value must be true or false): #{nesting.inspect}"
+      end
+
+      unless [UNSET_VALUE, true, false].include? privileged
+        errors << "Invalid `privileged' (value must be true or false): #{privileged.inspect}"
+      end
+
       unless [UNSET_VALUE, true, false].include? ephemeral
         errors << "Invalid `ephemeral' (value must be true or false): #{ephemeral.inspect}"
       end
@@ -72,6 +84,14 @@ module VagrantLXD
     def finalize!
       if name == UNSET_VALUE
         @name = nil
+      end
+
+      if nesting == UNSET_VALUE
+        @nesting = false
+      end
+
+      if privileged == UNSET_VALUE
+        @privileged = false
       end
 
       if ephemeral == UNSET_VALUE

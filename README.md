@@ -80,6 +80,8 @@ Vagrant.configure('2') do |config|
     lxd.api_endpoint = 'https://127.0.0.1:8443'
     lxd.timeout = 10
     lxd.name = nil
+    lxd.nesting = false
+    lxd.privileged = false
     lxd.ephemeral = false
   end
 end
@@ -118,6 +120,21 @@ container called "my-container", use the `vagrant lxd attach` command:
     
     $ vagrant lxd attach default my-container
     ==> default: Attaching to container 'my-container'...
+
+### Nested Containers
+
+In order to run Linux containers on an LXD-backed machine, it must be
+created with the `nesting` and `privileged` properties set to `true`.
+These correspond to the `security.nesting` and `security.privileged`
+configuration items for LXD, respectively. Refer to LXD's [container
+configuration documentation][docs] for details.
+
+    config.vm.provider 'lxd' do |lxd|
+      lxd.nesting = true
+      lxd.privileged = true
+    end
+
+[docs]: https://lxd.readthedocs.io/en/latest/containers/
 
 ## Hacking
 

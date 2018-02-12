@@ -88,6 +88,8 @@ module VagrantLXD
     NOT_CREATED = Vagrant::MachineState::NOT_CREATED_ID
 
     attr_reader :api_endpoint
+    attr_reader :nesting
+    attr_reader :privileged
     attr_reader :ephemeral
     attr_reader :name
     attr_reader :timeout
@@ -96,6 +98,8 @@ module VagrantLXD
       @machine = machine
       @timeout = machine.provider_config.timeout
       @api_endpoint = machine.provider_config.api_endpoint
+      @nesting = machine.provider_config.nesting
+      @privileged = machine.provider_config.privileged
       @ephemeral = machine.provider_config.ephemeral
       @name = machine.provider_config.name
       @logger = Log4r::Logger.new('vagrant::lxd')
@@ -365,7 +369,10 @@ module VagrantLXD
     end
 
     def config
-      config = {}
+      config = {
+        :'security.nesting' => nesting,
+        :'security.privileged' => privileged,
+      }
 
       # Set "raw.idmap" if the host's sub{u,g}id configuration allows it.
       # This allows sharing folders via LXD (see synced_folder.rb).
