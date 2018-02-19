@@ -35,13 +35,14 @@ module VagrantLXD
       @nesting = UNSET_VALUE
       @privileged = UNSET_VALUE
       @ephemeral = UNSET_VALUE
+      @profiles = UNSET_VALUE
       @api_endpoint = UNSET_VALUE
     end
 
     def validate(machine)
       errors = _detected_errors
 
-      unless [UNSET_VALUE, nil].include? name
+      unless name.nil?
         if not name.is_a? String
           errors << "Invalid `name' (value must be a string): #{name.inspect}"
         elsif name.size >= 64
@@ -51,38 +52,32 @@ module VagrantLXD
         end
       end
 
-      unless timeout == UNSET_VALUE
-        if not timeout.is_a? Integer
-          errors << "Invalid `timeout' (value must be an integer): #{timeout.inspect}"
-        elsif timeout < 1
-          errors << "Invalid `timeout' (value must be positive): #{timeout.inspect}"
-        end
+      if not timeout.is_a? Integer
+        errors << "Invalid `timeout' (value must be an integer): #{timeout.inspect}"
+      elsif timeout < 1
+        errors << "Invalid `timeout' (value must be positive): #{timeout.inspect}"
       end
 
-      unless api_endpoint == UNSET_VALUE
-        begin
-          URI(api_endpoint).scheme == 'https' or raise URI::InvalidURIError
-        rescue URI::InvalidURIError
-          errors << "Invalid `api_endpoint' (value must be a valid HTTPS address): #{api_endpoint.inspect}"
-        end
+      begin
+        URI(api_endpoint).scheme == 'https' or raise URI::InvalidURIError
+      rescue URI::InvalidURIError
+        errors << "Invalid `api_endpoint' (value must be a valid HTTPS address): #{api_endpoint.inspect}"
       end
 
-      unless [UNSET_VALUE, true, false].include? nesting
+      unless [true, false].include? nesting
         errors << "Invalid `nesting' (value must be true or false): #{nesting.inspect}"
       end
 
-      unless [UNSET_VALUE, true, false].include? privileged
+      unless [true, false].include? privileged
         errors << "Invalid `privileged' (value must be true or false): #{privileged.inspect}"
       end
 
-      unless [UNSET_VALUE, true, false].include? ephemeral
+      unless [true, false].include? ephemeral
         errors << "Invalid `ephemeral' (value must be true or false): #{ephemeral.inspect}"
       end
 
-      unless profiles == UNSET_VALUE
-        unless profiles.is_a? Array and profiles == profiles.grep(String)
-          errors << "Invalid `profiles' (value must be an array of strings): #{profiles.inspect}"
-        end
+      unless profiles.is_a? Array and profiles == profiles.grep(String)
+        errors << "Invalid `profiles' (value must be an array of strings): #{profiles.inspect}"
       end
 
       { Version::NAME => errors }
