@@ -93,6 +93,7 @@ module VagrantLXD
     attr_reader :ephemeral
     attr_reader :name
     attr_reader :timeout
+    attr_reader :profiles
 
     def initialize(machine)
       @machine = machine
@@ -101,6 +102,7 @@ module VagrantLXD
       @nesting = machine.provider_config.nesting
       @privileged = machine.provider_config.privileged
       @ephemeral = machine.provider_config.ephemeral
+      @profiles = machine.provider_config.profiles
       @name = machine.provider_config.name
       @logger = Log4r::Logger.new('vagrant::lxd')
       @lxd = Hyperkit::Client.new(api_endpoint: api_endpoint.to_s, verify_ssl: false)
@@ -216,7 +218,7 @@ module VagrantLXD
           @logger.debug 'Created image alias: ' << image_alias.inspect
         end
 
-        container = @lxd.create_container(machine_id, ephemeral: ephemeral, fingerprint: fingerprint, config: config)
+        container = @lxd.create_container(machine_id, ephemeral: ephemeral, fingerprint: fingerprint, config: config, profiles: profiles)
         @logger.debug 'Created container: ' << container.inspect
 
         @machine.id = machine_id

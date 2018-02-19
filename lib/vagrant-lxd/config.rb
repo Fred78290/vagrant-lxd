@@ -26,6 +26,7 @@ module VagrantLXD
     attr_accessor :nesting
     attr_accessor :privileged
     attr_accessor :ephemeral
+    attr_accessor :profiles
     attr_accessor :timeout
 
     def initialize
@@ -78,6 +79,12 @@ module VagrantLXD
         errors << "Invalid `ephemeral' (value must be true or false): #{ephemeral.inspect}"
       end
 
+      unless profiles == UNSET_VALUE
+        unless profiles.is_a? Array and profiles == profiles.grep(String)
+          errors << "Invalid `profiles' (value must be an array of strings): #{profiles.inspect}"
+        end
+      end
+
       { Version::NAME => errors }
     end
 
@@ -96,6 +103,10 @@ module VagrantLXD
 
       if ephemeral == UNSET_VALUE
         @ephemeral = false
+      end
+
+      if profiles == UNSET_VALUE
+        @profiles = []
       end
 
       if timeout == UNSET_VALUE
