@@ -80,8 +80,8 @@ Vagrant.configure('2') do |config|
     lxd.api_endpoint = 'https://127.0.0.1:8443'
     lxd.timeout = 10
     lxd.name = nil
-    lxd.nesting = false
-    lxd.privileged = false
+    lxd.nesting = nil
+    lxd.privileged = nil
     lxd.ephemeral = false
     lxd.profiles = []
   end

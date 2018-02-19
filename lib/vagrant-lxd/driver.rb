@@ -371,10 +371,12 @@ module VagrantLXD
     end
 
     def config
-      config = {
-        :'security.nesting' => nesting,
-        :'security.privileged' => privileged,
-      }
+      config = {}
+
+      # Add security settings, if specified. If not, we omit them so
+      # they can be configured by one of the container's profiles instead.
+      config[:'security.nesting'] = nesting unless nesting.nil?
+      config[:'security.privileged'] = privileged unless privileged.nil?
 
       # Set "raw.idmap" if the host's sub{u,g}id configuration allows it.
       # This allows sharing folders via LXD (see synced_folder.rb).

@@ -64,11 +64,11 @@ module VagrantLXD
         errors << "Invalid `api_endpoint' (value must be a valid HTTPS address): #{api_endpoint.inspect}"
       end
 
-      unless [true, false].include? nesting
+      unless [true, false, nil].include? nesting
         errors << "Invalid `nesting' (value must be true or false): #{nesting.inspect}"
       end
 
-      unless [true, false].include? privileged
+      unless [true, false, nil].include? privileged
         errors << "Invalid `privileged' (value must be true or false): #{privileged.inspect}"
       end
 
@@ -89,11 +89,11 @@ module VagrantLXD
       end
 
       if nesting == UNSET_VALUE
-        @nesting = false
+        @nesting = nil
       end
 
       if privileged == UNSET_VALUE
-        @privileged = false
+        @privileged = nil
       end
 
       if ephemeral == UNSET_VALUE
