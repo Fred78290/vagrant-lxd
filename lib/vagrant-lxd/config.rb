@@ -101,7 +101,7 @@ module VagrantLXD
       end
 
       if profiles == UNSET_VALUE
-        @profiles = []
+        @profiles = ['default']
       end
 
       if timeout == UNSET_VALUE

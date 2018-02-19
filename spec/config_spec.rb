@@ -24,7 +24,7 @@ describe VagrantLXD::Config do
     its('nesting') { should be nil }
     its('privileged') { should be nil }
     its('ephemeral') { should be false }
-    its('profiles') { should eq [] }
+    its('profiles') { should eq ['default'] }
   end
 
   context 'with an unrecognised setting' do

@@ -83,7 +83,7 @@ Vagrant.configure('2') do |config|
     lxd.nesting = nil
     lxd.privileged = nil
     lxd.ephemeral = false
-    lxd.profiles = []
+    lxd.profiles = ['default']
   end
 end
 ```
