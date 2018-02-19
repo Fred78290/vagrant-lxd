@@ -4,7 +4,7 @@ before_script:
   - apt-get -y update
   - apt-get -y upgrade
   - gem install bundler --no-ri --no-rdoc
-  - bundle install -j $(nproc)
+  - bundle install -j $(nproc) --path vendor/bundle
 
 spec:
   script:
