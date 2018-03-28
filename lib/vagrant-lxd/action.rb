@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2017 Catalyst.net Ltd
+# Copyright (c) 2017-2018 Catalyst.net Ltd
 #
 # This file is part of vagrant-lxd.
 #
