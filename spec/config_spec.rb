@@ -21,9 +21,10 @@ describe VagrantLXD::Config do
     its('name') { should be nil }
     its('api_endpoint') { should eq URI("https://127.0.0.1:8443") }
     its('timeout') { should be 10 }
+    its('environment') { should == {} }
+    its('ephemeral') { should be false }
     its('nesting') { should be nil }
     its('privileged') { should be nil }
-    its('ephemeral') { should be false }
     its('profiles') { should eq ['default'] }
   end
 
@@ -50,9 +51,40 @@ describe VagrantLXD::Config do
     end
 
     it 'should reject invalid profile names' do
-      subject.profiles = [36, 'chambers']
+      profiles = [36, 'chambers']
+      subject.profiles = profiles
       subject.finalize!
-      validation_errors.should eq [%{Invalid `profiles' (value must be an array of strings): [36, "chambers"]}]
+      validation_errors.should eq [%{Invalid `profiles' (value must be an array of strings): #{profiles}}]
+    end
+  end
+
+  describe 'the environment setting' do
+    it 'should reject non-hash values' do
+      environment = ['enter', 'the', 'dragon']
+      subject.environment = environment
+      subject.finalize!
+      validation_errors.should eq [%{Invalid `environment' (value must be a hash): #{environment}}]
+    end
+
+    it 'should reject invalid hash keys' do
+      environment = {111 => 'matic'}
+      subject.environment = environment
+      subject.finalize!
+      validation_errors.should eq [%{Invalid `environment' (hash keys must be strings or symbols): #{environment}}]
+    end
+
+    it 'should reject invalid hash values' do
+      environment = {'ill' => 111}
+      subject.environment = environment
+      subject.finalize!
+      validation_errors.should eq [%{Invalid `environment' (hash values must be strings): #{environment}}]
+    end
+
+    it 'should accept valid keys' do
+      subject.environment = {'ill' => 'matic', :still => 'matic'}
+      subject.finalize!
+      subject.environment.should be == {'ill' => 'matic', :still => 'matic'}
+      validation_errors.should eq []
     end
   end
 end

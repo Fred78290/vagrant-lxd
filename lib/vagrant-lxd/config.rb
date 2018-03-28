@@ -23,15 +23,17 @@ module VagrantLXD
   class Config < Vagrant.plugin('2', :config)
     attr_accessor :api_endpoint
     attr_accessor :name
+    attr_accessor :timeout
+    attr_accessor :environment
+    attr_accessor :ephemeral
     attr_accessor :nesting
     attr_accessor :privileged
-    attr_accessor :ephemeral
     attr_accessor :profiles
-    attr_accessor :timeout
 
     def initialize
       @name = UNSET_VALUE
       @timeout = UNSET_VALUE
+      @environment = UNSET_VALUE
       @nesting = UNSET_VALUE
       @privileged = UNSET_VALUE
       @ephemeral = UNSET_VALUE
@@ -56,6 +58,14 @@ module VagrantLXD
         errors << "Invalid `timeout' (value must be an integer): #{timeout.inspect}"
       elsif timeout < 1
         errors << "Invalid `timeout' (value must be positive): #{timeout.inspect}"
+      end
+
+      if not environment.is_a? Hash
+        errors << "Invalid `environment' (value must be a hash): #{environment.inspect}"
+      elsif not environment.keys.all? { |x| x.is_a? String or x.is_a? Symbol }
+        errors << "Invalid `environment' (hash keys must be strings or symbols): #{environment.inspect}"
+      elsif not environment.values.all? { |x| x.is_a? String }
+        errors << "Invalid `environment' (hash values must be strings): #{environment.inspect}"
       end
 
       begin
@@ -86,6 +96,10 @@ module VagrantLXD
     def finalize!
       if name == UNSET_VALUE
         @name = nil
+      end
+
+      if environment == UNSET_VALUE
+        @environment = {}
       end
 
       if nesting == UNSET_VALUE

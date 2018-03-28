@@ -88,17 +88,19 @@ module VagrantLXD
     NOT_CREATED = Vagrant::MachineState::NOT_CREATED_ID
 
     attr_reader :api_endpoint
-    attr_reader :nesting
-    attr_reader :privileged
-    attr_reader :ephemeral
     attr_reader :name
     attr_reader :timeout
+    attr_reader :environment
+    attr_reader :ephemeral
+    attr_reader :nesting
+    attr_reader :privileged
     attr_reader :profiles
 
     def initialize(machine)
       @machine = machine
       @timeout = machine.provider_config.timeout
       @api_endpoint = machine.provider_config.api_endpoint
+      @environment = machine.provider_config.environment
       @nesting = machine.provider_config.nesting
       @privileged = machine.provider_config.privileged
       @ephemeral = machine.provider_config.ephemeral
@@ -289,6 +291,11 @@ module VagrantLXD
 
   private
 
+    #
+    # The remaining methods are just conveniences, not part of the API
+    # used by the rest of the plugin.
+    #
+
     def machine_id
       @machine.id
     end
@@ -378,6 +385,9 @@ module VagrantLXD
       config[:'security.nesting'] = nesting unless nesting.nil?
       config[:'security.privileged'] = privileged unless privileged.nil?
 
+      # Include user-specified environment variables.
+      config.merge! Hash[environment.map { |k, v| [:"environment.#{k}", v] }]
+
       # Set "raw.idmap" if the host's sub{u,g}id configuration allows it.
       # This allows sharing folders via LXD (see synced_folder.rb).
       begin
@@ -397,6 +407,7 @@ module VagrantLXD
       config
     end
 
+    # TODO Image handling should be moved into its own class.
     def prepare_image_file
       tmpdir = Dir.mktmpdir
 
