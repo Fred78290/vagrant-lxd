@@ -38,9 +38,10 @@ describe VagrantLXD::Config do
 
   describe 'the profiles setting' do
     it 'should accept valid values' do
-      subject.profiles = ['crayola']
+      value = ['crayola']
+      subject.profiles = value
       subject.finalize!
-      subject.profiles.should eq ['crayola']
+      subject.profiles.should eq value
       validation_errors.should eq []
     end
 
@@ -60,30 +61,55 @@ describe VagrantLXD::Config do
 
   describe 'the environment setting' do
     it 'should reject non-hash values' do
-      environment = ['enter', 'the', 'dragon']
-      subject.environment = environment
+      value = ['enter', 'the', 'dragon']
+      subject.environment = value
       subject.finalize!
-      validation_errors.should eq [%{Invalid `environment' (value must be a hash): #{environment}}]
+      validation_errors.should eq [%{Invalid `environment' (value must be a hash): #{value}}]
     end
 
     it 'should reject invalid hash keys' do
-      environment = {111 => 'matic'}
-      subject.environment = environment
+      value = {111 => 'matic'}
+      subject.environment = value
       subject.finalize!
-      validation_errors.should eq [%{Invalid `environment' (hash keys must be strings or symbols): #{environment}}]
+      validation_errors.should eq [%{Invalid `environment' (hash keys must be strings or symbols): #{value}}]
     end
 
     it 'should reject invalid hash values' do
-      environment = {'ill' => 111}
-      subject.environment = environment
+      value = {'ill' => 111}
+      subject.environment = value
       subject.finalize!
-      validation_errors.should eq [%{Invalid `environment' (hash values must be strings): #{environment}}]
+      validation_errors.should eq [%{Invalid `environment' (hash values must be strings): #{value}}]
     end
 
     it 'should accept valid keys' do
-      subject.environment = {'ill' => 'matic', :still => 'matic'}
+      value = {'ill' => 'matic', :still => 'matic'}
+      subject.environment = value
       subject.finalize!
-      subject.environment.should be == {'ill' => 'matic', :still => 'matic'}
+      subject.environment.should eq value
+      validation_errors.should eq []
+    end
+  end
+
+  describe 'the config setting' do
+    it 'should reject non-hash values' do
+      value = 0x13EA57_1110DE
+      subject.config = value
+      subject.finalize!
+      validation_errors.should eq ["Invalid `config' (value must be a hash): #{value}"]
+    end
+
+    it 'should reject invalid hash keys' do
+      value = {'environment.MODE' => 'BEAST'}
+      subject.config = value
+      subject.finalize!
+      validation_errors.should eq [%{Invalid `config' (hash keys must be symbols): #{value}}]
+    end
+
+    it 'should accept valid keys' do
+      value = {'environment.MODE': 'BEAST'}
+      subject.config = value
+      subject.finalize!
+      subject.config.should eq value
       validation_errors.should eq []
     end
   end

@@ -17,6 +17,7 @@
 # along with vagrant-lxd. If not, see <http://www.gnu.org/licenses/>.
 #
 
+require 'active_support/core_ext/object/deep_dup'
 require 'hyperkit'
 require 'securerandom'
 require 'tempfile'
@@ -100,6 +101,7 @@ module VagrantLXD
       @machine = machine
       @timeout = machine.provider_config.timeout
       @api_endpoint = machine.provider_config.api_endpoint
+      @config = @machine.provider_config.config
       @environment = machine.provider_config.environment
       @nesting = machine.provider_config.nesting
       @privileged = machine.provider_config.privileged
@@ -378,7 +380,10 @@ module VagrantLXD
     end
 
     def config
-      config = {}
+      # NOTE We reuse ActiveSupport for `#deep_dup` here, but if the Hyperkit
+      # dependency ever goes away, drop ActiveSupport and use some other
+      # method to get a deep copy of the config.
+      config = @config.deep_dup
 
       # Add security settings, if specified. If not, we omit them so
       # they can be configured by one of the container's profiles instead.
@@ -390,16 +395,20 @@ module VagrantLXD
 
       # Set "raw.idmap" if the host's sub{u,g}id configuration allows it.
       # This allows sharing folders via LXD (see synced_folder.rb).
-      begin
-        %w(uid gid).each do |type|
-          value = Process.send(type)
-          if File.readlines("/etc/sub#{type}").grep(/^root:#{value}:[1-9]/).any?
-            config[:'raw.idmap'] ||= ''
-            config[:'raw.idmap'] << "#{type} #{value} #{VAGRANT_UID}\n"
+      # If the user has already specified a 'raw.idmap', leave it alone.
+      unless config.include?(:'raw.idmap')
+        begin
+          # Check for root mappings in /etc/sub{uid,gid}.
+          %w(uid gid).each do |type|
+            id = Process.send(type)
+            if File.readlines("/etc/sub#{type}").grep(/^root:#{id}:[1-9]/).any?
+              config[:'raw.idmap'] ||= ''
+              config[:'raw.idmap'] << "#{type} #{id} #{VAGRANT_UID}\n"
+            end
           end
+        rescue StandardError => e
+          @logger.warn "Cannot read subordinate permissions file: #{e.message}"
         end
-      rescue StandardError => e
-        @logger.warn "Cannot read subordinate permissions file: #{e.message}"
       end
 
       @logger.debug 'Resulting configuration: ' << config.inspect

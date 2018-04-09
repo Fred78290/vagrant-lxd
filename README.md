@@ -85,6 +85,7 @@ Vagrant.configure('2') do |config|
     lxd.ephemeral = false
     lxd.profiles = ['default']
     lxd.environment = {}
+    lxd.config = {}
   end
 end
 ```
