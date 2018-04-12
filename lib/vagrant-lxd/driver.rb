@@ -28,6 +28,8 @@ module VagrantLXD
   class Driver
     include Vagrant::Util
 
+    USER_AGENT = "#{Version::DESCRIPTION} #{Version::VERSION} (#{Hyperkit::Default.user_agent})"
+
     VAGRANT_UID = 1000 # TODO Make this configurable.
 
     class OperationTimeout < Vagrant::Errors::VagrantError
@@ -109,7 +111,7 @@ module VagrantLXD
       @profiles = machine.provider_config.profiles
       @name = machine.provider_config.name
       @logger = Log4r::Logger.new('vagrant::lxd')
-      @lxd = Hyperkit::Client.new(api_endpoint: api_endpoint.to_s, verify_ssl: false)
+      @lxd = Hyperkit::Client.new(api_endpoint: api_endpoint.to_s, verify_ssl: false, user_agent: USER_AGENT)
     end
 
     def validate!
