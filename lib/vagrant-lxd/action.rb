@@ -110,10 +110,10 @@ module VagrantLXD
               c.use HandleBox
               c.use LXD.action(:create)
               c.use LXD.action(:resume)
-              c.use SetHostname
-              c.use SyncedFolders
-              c.use WaitForCommunicator
               c.use Provision
+              c.use SyncedFolders
+              c.use SetHostname
+              c.use WaitForCommunicator
             when :running
               c.use Message, :info, 'Machine is already running.'
             when :frozen, :stopped
@@ -192,10 +192,10 @@ module VagrantLXD
             when :frozen, :stopped
               c.use Message, :info, 'Resuming machine...'
               c.use LXD.action(:resume)
-              c.use SetHostname
-              c.use SyncedFolders
-              c.use WaitForCommunicator
               c.use Provision
+              c.use SyncedFolders
+              c.use SetHostname
+              c.use WaitForCommunicator
             else
               c.use Message, :error, "Machine cannot be resumed while #{env[:machine_state]}."
             end
@@ -213,6 +213,18 @@ module VagrantLXD
               c.use halt
             end
             c.use resume
+          end
+        end
+      end
+
+      def sync_folders
+        builder do |b|
+          b.use Call, IsState, Vagrant::MachineState::NOT_CREATED_ID do |env, c|
+            if env[:result]
+              next
+            else
+              c.use SyncedFolders
+            end
           end
         end
       end
