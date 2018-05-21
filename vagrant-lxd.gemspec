@@ -29,11 +29,11 @@ Gem::Specification.new do |spec|
   spec.authors       = ['Evan Hanson']
   spec.email         = ['evanh@catalyst.net.nz']
   spec.license       = 'GPL-3.0'
-  spec.homepage      = 'https://gitlab.com/catalyst-it/vagrant-lxd'
+  spec.homepage      = 'https://gitlab.com/frederic.boltz/vagrant-lxd'
   spec.require_paths = ['lib']
   spec.files         = `git ls-files -z`.split("\x0").reject do |f|
     f.match(%r{^(test|spec|features)/})
   end
 
-  spec.add_runtime_dependency 'hyperkit', '~> 1.1.0'
+  spec.add_runtime_dependency 'hyperkit', '~> 1.2'
 end
