@@ -64,6 +64,10 @@ module VagrantLXD
       error_key 'lxd_container_already_exists'
     end
 
+    class ImageAlreadyExists < Vagrant::Errors::VagrantError
+      error_key 'lxd_image_already_exists'
+    end
+
     class DuplicateAttachmentFailure < Vagrant::Errors::VagrantError
       error_key 'lxd_duplicate_attachment_failure'
     end
@@ -212,19 +216,30 @@ module VagrantLXD
     def create
       if in_state? NOT_CREATED
         machine_id = generate_machine_id
-        file, fingerprint = prepare_image_file
+        file, box_name, fingerprint = prepare_image_file
 
         begin
           image = @lxd.image(fingerprint)
           @logger.debug 'Using image: ' << image.inspect
         rescue Hyperkit::NotFound
-          image = @lxd.create_image_from_file(file)
-          image_alias = @lxd.create_image_alias(fingerprint, machine_id)
-          @logger.debug 'Created image: ' << image.inspect
-          @logger.debug 'Created image alias: ' << image_alias.inspect
+
+          begin
+            @lxd.image_by_alias(box_name)
+
+            fail ImageAlreadyExists, fingerprint: fingerprint, alias: box_name
+          rescue Hyperkit::NotFound
+            @machine.ui.info 'Importing LXC image...'
+
+            image = @lxd.create_image_from_file(file, fingerprint: fingerprint)
+            image_alias = @lxd.create_image_alias(fingerprint, box_name)
+
+            @logger.debug 'Created image: ' << image.inspect
+            @logger.debug 'Created image alias: ' << image_alias.inspect
+          end
         end
 
-        container = @lxd.create_container(machine_id, ephemeral: ephemeral, fingerprint: fingerprint, config: config, profiles: profiles)
+        @machine.ui.info "Create container from LXC image #{box_name}..."
+        container = @lxd.create_container(machine_id, alias: box_name, ephemeral: ephemeral, fingerprint: fingerprint, config: config, profiles: profiles)
         @logger.debug 'Created container: ' << container.inspect
 
         @machine.id = machine_id
@@ -277,7 +292,7 @@ module VagrantLXD
 
     def destroy
       if in_state? :stopped
-        delete_image
+        # delete_image
         delete_container
       else
         @logger.debug "Skipped container destroy (#{machine_id} is not stopped)"
@@ -423,16 +438,30 @@ module VagrantLXD
       tmpdir = Dir.mktmpdir
 
       lxc_dir = @machine.box.directory
+      lxc_name = @machine.box.name
       lxc_rootfs = lxc_dir / 'rootfs.tar.gz'
+      lxd_metadata_file = lxc_dir / 'lxd_metadata.yaml'
+
+      if lxd_metadata_file.exist? then
+        @machine.ui.info 'Check for native LXD image...'
+        lxd_metadata = YAML.load(File.read(lxd_metadata_file)) rescue nil
+
+        if lxd_metadata.is_a? Hash then
+          lxc_fingerprint = lxd_metadata['source_fingerprint']
+
+          return lxc_rootfs, lxc_name, lxc_fingerprint
+        else
+          @machine.ui.info 'Not a native LXD image, fallback to LXC image...'
+        end
+      end
+
       lxc_fingerprint = Digest::SHA256.file(lxc_rootfs).hexdigest
 
-      lxd_dir = @machine.box.directory / '..' / 'lxd'
+      lxd_dir = @machine.box.directory / 'lxd' / lxc_name
       lxd_rootfs = lxd_dir / 'rootfs.tar.gz'
       lxd_metadata = YAML.load(File.read(lxd_dir / 'metadata.yaml')) rescue nil
 
-      if lxd_rootfs.exist? and lxd_metadata.is_a? Hash and lxd_metadata['source_fingerprint'] == lxc_fingerprint
-        @machine.ui.info 'Importing LXC image...'
-      else
+      if lxd_rootfs.exist? == false or lxd_metadata.is_a? Hash and lxd_metadata['source_fingerprint'] != lxc_fingerprint
         @machine.ui.info 'Converting LXC image to LXD format...'
 
         SafeChdir.safe_chdir(tmpdir) do
@@ -454,7 +483,7 @@ module VagrantLXD
         end
       end
 
-      return lxd_rootfs, Digest::SHA256.file(lxd_rootfs).hexdigest
+      return lxd_rootfs, lxc_name, Digest::SHA256.file(lxd_rootfs).hexdigest
     rescue Exception => e
       @machine.ui.error 'Failed to create LXD image for container'
       @logger.error 'Error preparing LXD image: ' << e.message << "\n" << e.backtrace.join("\n")
