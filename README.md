@@ -90,6 +90,48 @@ Vagrant.configure('2') do |config|
 end
 ```
 
+### Fixed bugs
+
+vagrant up, multi VM with different box, spend time to convert LXC image (rootfs.tar.gz always the same place)
+
+vagrant up, new order of provisioning
+ 1. hostname
+ 2. sync folder
+ 3. provisionning
+
+vagrant rsync, wasn't never called
+
+### New features
+
+In the original version, the plugin convert an LXC image to LXD, it take long to do it. Now you can build your native LXD image and the new import method is more faster. See below how to
+
+Will not also delete remote LXD image due the new mechanism
+
+### Create custom Vagrant box for LXD
+
+This project include a script to create native lxd image for vagrant box. The difference from the original project is to keep the fingerprint of the lxd image between the LXD server generating the image and vagrant box. It's means the image is not converted during VM creation, allowing speed up.
+
+First step is to create a custom LXD container on your LXD server and setup to be used as a vagrant box. Some tutorials on the web.
+
+Before using the script you must set some prerequites `setup lxc` and `set variables`. you can also push the box to a private FTP server
+
+    lxc remote set-default <LXD server>
+
+create a file named setenv.sh and put your variables
+
+    export VAGRANT_BOX_BUILDDIR=~/Vagrant
+    export VAGRANT_BOX_SERVER=https://<your_http_server>/vagrant/box/
+    export VAGRANT_FTP_DIR=/var/www/vagrant/box/
+    export VAGRANT_FTP_SERVER=<your_ftp_server>
+    export VAGRANT_FTP_UID=<ftp_uid>
+    export VAGRANT_FTP_PWD=<ftp_pwd>
+
+To create a Vagrant box, the build is done by this command
+
+    $ ./create-box-lxd.sh '<container name>' '<image name>' '<version>' '<description>' <YES|NO>
+
+At the end your box will be added to your local vagrant
+
 ### Shared Folders
 
 In order to use shared folders, you must first add your user ID to the
@@ -117,10 +159,10 @@ container called "my-container", use the `vagrant lxd attach` command:
     +--------------+
     | my-container |
     +--------------+
-    
+
     $ vagrant lxd detach default # detach from current container, if necessary
     ==> default: Machine is not attached to a container, skipping...
-    
+
     $ vagrant lxd attach default my-container
     ==> default: Attaching to container 'my-container'...
 
