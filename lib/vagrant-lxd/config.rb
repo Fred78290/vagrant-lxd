@@ -34,13 +34,20 @@ module VagrantLXD
     def initialize
       @name = UNSET_VALUE
       @timeout = UNSET_VALUE
-      @config = UNSET_VALUE
+      @config = {}
       @environment = UNSET_VALUE
       @nesting = UNSET_VALUE
       @privileged = UNSET_VALUE
       @ephemeral = UNSET_VALUE
       @profiles = UNSET_VALUE
       @api_endpoint = UNSET_VALUE
+    end
+
+    def merge(other)
+      super.tap do |result|
+        c = @config.merge(other.config)
+        result.instance_variable_set(:@config, c)
+      end
     end
 
     def validate(machine)
