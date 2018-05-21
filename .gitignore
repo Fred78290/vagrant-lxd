@@ -2,3 +2,5 @@
 /.vagrant/
 /Vagrantfile
 /vendor
+*.gem
+setenv.sh
