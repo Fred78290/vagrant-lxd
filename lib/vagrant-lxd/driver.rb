@@ -108,6 +108,7 @@ module VagrantLXD
       @timeout = machine.provider_config.timeout
       @api_endpoint = machine.provider_config.api_endpoint
       @config = @machine.provider_config.config
+      @devices = @machine.provider_config.devices
       @environment = machine.provider_config.environment
       @nesting = machine.provider_config.nesting
       @privileged = machine.provider_config.privileged
@@ -239,7 +240,25 @@ module VagrantLXD
         end
 
         @machine.ui.info "Create container from LXC image #{box_name}..."
-        container = @lxd.create_container(machine_id, alias: box_name, ephemeral: ephemeral, fingerprint: fingerprint, config: config, profiles: profiles)
+        container = @lxd.create_container(machine_id, alias: box_name, ephemeral: ephemeral, fingerprint: fingerprint, config: config, devices: devices, profiles: profiles)
+        
+        if devices.empty? == false then
+          container = @lxd.container(machine_id)
+          container_device = container[:devices]
+
+          if container_device.nil? then
+            container_device = {}
+          else
+            container_device = container_device.to_hash
+          end
+
+          container[:devices] = devices.merge(container_device)
+          
+          @machine.ui.info "Add devices #{container[:devices]}"
+
+          @lxd.update_container(machine_id, container)
+        end
+
         @logger.debug 'Created container: ' << container.inspect
 
         @machine.id = machine_id
@@ -394,6 +413,15 @@ module VagrantLXD
     rescue Timeout::Error
       @logger.warn "Failed to find ipv4 address for #{machine_id} within #{timeout} seconds!"
       fail NetworkAddressAcquisitionTimeout, time_limit: timeout, lxd_bridge: 'lxdbr0' # FIXME Hardcoded bridge name
+    end
+
+    def devices
+       # NOTE We reuse ActiveSupport for `#deep_dup` here, but if the Hyperkit
+      # dependency ever goes away, drop ActiveSupport and use some other
+      # method to get a deep copy of the config.
+      devices = @devices.deep_dup
+
+      devices
     end
 
     def config

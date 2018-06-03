@@ -85,7 +85,17 @@ Vagrant.configure('2') do |config|
     lxd.ephemeral = false
     lxd.profiles = ['default']
     lxd.environment = {}
-    lxd.config = {}
+    lxd.config = {
+        :"linux.kernel_modules" => "ip_tables,ip6_tables,netlink_diag,nf_nat,overlay",
+        :"raw.lxc" => "lxc.apparmor.profile=unconfined\nlxc.mount.auto=proc:rw sys:rw cgroup:rw\nlxc.cap.drop=\nlxc.cgroup.devices.allow=a"
+    }
+    lxd.devices = {
+        :"aadisable1" => {
+            :"path" => "/sys/module/apparmor/parameters/enabled",
+            :"source" => "/dev/null",
+            :"type" => "disk"
+        }
+    }
   end
 end
 ```
@@ -106,6 +116,8 @@ vagrant rsync, wasn't never called
 In the original version, the plugin convert an LXC image to LXD, it take long to do it. Now you can build your native LXD image and the new import method is more faster. See below how to
 
 Will not also delete remote LXD image due the new mechanism
+
+Support devices configuration
 
 ### Create custom Vagrant box for LXD
 

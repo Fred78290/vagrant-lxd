@@ -25,6 +25,7 @@ module VagrantLXD
     attr_accessor :name
     attr_accessor :timeout
     attr_accessor :config
+    attr_accessor :devices
     attr_accessor :environment
     attr_accessor :ephemeral
     attr_accessor :nesting
@@ -35,6 +36,7 @@ module VagrantLXD
       @name = UNSET_VALUE
       @timeout = UNSET_VALUE
       @config = {}
+      @devices = {}
       @environment = UNSET_VALUE
       @nesting = UNSET_VALUE
       @privileged = UNSET_VALUE
@@ -47,6 +49,8 @@ module VagrantLXD
       super.tap do |result|
         c = @config.merge(other.config)
         result.instance_variable_set(:@config, c)
+        c = @devices.merge(other.devices)
+        result.instance_variable_set(:@devices, c)
       end
     end
 
@@ -73,6 +77,12 @@ module VagrantLXD
         errors << "Invalid `config' (value must be a hash): #{config.inspect}"
       elsif not config.keys.all? { |x| x.is_a? Symbol }
         errors << "Invalid `config' (hash keys must be symbols): #{config.inspect}"
+      end
+
+      if not devices.is_a? Hash
+        errors << "Invalid `devices' (value must be a hash): #{devices.inspect}"
+      elsif not devices.keys.all? { |x| x.is_a? Symbol }
+        errors << "Invalid `devices' (hash keys must be symbols): #{devices.inspect}"
       end
 
       if not environment.is_a? Hash
@@ -115,6 +125,10 @@ module VagrantLXD
 
       if config == UNSET_VALUE
         @config = {}
+      end
+
+      if devices == UNSET_VALUE
+        @devices = {}
       end
 
       if environment == UNSET_VALUE
