@@ -84,6 +84,8 @@ Vagrant.configure('2') do |config|
     lxd.privileged = nil
     lxd.ephemeral = false
     lxd.profiles = ['default']
+    lxd.cpu_count = 2
+    lxd.memory_mb = 2048
     lxd.environment = {}
     lxd.config = {
         :"linux.kernel_modules" => "ip_tables,ip6_tables,netlink_diag,nf_nat,overlay",
