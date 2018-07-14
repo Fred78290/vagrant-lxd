@@ -96,6 +96,8 @@ module VagrantLXD
 
     attr_reader :api_endpoint
     attr_reader :name
+    attr_reader :cpu_count
+    attr_reader :memory_mb
     attr_reader :timeout
     attr_reader :environment
     attr_reader :ephemeral
@@ -115,6 +117,8 @@ module VagrantLXD
       @ephemeral = machine.provider_config.ephemeral
       @profiles = machine.provider_config.profiles
       @name = machine.provider_config.name
+      @cpu_count = machine.provider_config.cpu_count
+      @memory_mb = machine.provider_config.memory_mb
       @logger = Log4r::Logger.new('vagrant::lxd')
       @lxd = Hyperkit::Client.new(api_endpoint: api_endpoint.to_s, verify_ssl: false, user_agent: USER_AGENT)
     end
@@ -239,8 +243,18 @@ module VagrantLXD
           end
         end
 
-        @machine.ui.info "Create container from LXC image #{box_name}..."
-        container = @lxd.create_container(machine_id, alias: box_name, ephemeral: ephemeral, fingerprint: fingerprint, config: config, devices: devices, profiles: profiles)
+        _config = config.clone
+
+        if cpu_count.nil? == false then
+					_config[:"limits.cpu"] = cpu_count
+        end
+
+        if memory_mb.nil? == false then
+					_config[:"limits.memory"] = "#{memory_mb}MB"
+        end
+
+        @machine.ui.info "Create container from LXC image #{box_name} with config #{_config}..."
+        container = @lxd.create_container(machine_id, alias: box_name, ephemeral: ephemeral, fingerprint: fingerprint, config: _config, devices: devices, profiles: profiles)
         
         if devices.empty? == false then
           container = @lxd.container(machine_id)

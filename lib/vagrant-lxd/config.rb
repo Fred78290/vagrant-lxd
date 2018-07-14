@@ -22,6 +22,8 @@ require 'uri'
 module VagrantLXD
   class Config < Vagrant.plugin('2', :config)
     attr_accessor :api_endpoint
+		attr_accessor :cpu_count
+		attr_accessor :memory_mb
     attr_accessor :name
     attr_accessor :timeout
     attr_accessor :config
@@ -43,6 +45,8 @@ module VagrantLXD
       @ephemeral = UNSET_VALUE
       @profiles = UNSET_VALUE
       @api_endpoint = UNSET_VALUE
+      @cpu_count = UNSET_VALUE
+      @memory_mb = UNSET_VALUE
     end
 
     def merge(other)
@@ -121,6 +125,14 @@ module VagrantLXD
     def finalize!
       if name == UNSET_VALUE
         @name = nil
+      end
+
+      if cpu_count == UNSET_VALUE
+        @cpu_count = nil
+      end
+
+      if memory_mb == UNSET_VALUE
+        @memory_mb = nil
       end
 
       if config == UNSET_VALUE
