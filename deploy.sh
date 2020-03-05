@@ -1,9 +1,9 @@
 #!/bin/bash
 
 vagrant plugin uninstall vagrant-lxd
-rm vagrant-lxd-0.2.2.gem
+rm vagrant-lxd-0.2.3.gem
 gem build vagrant-lxd.gemspec
-vagrant plugin install vagrant-lxd-0.2.3.gem
+vagrant plugin install vagrant-lxd-0.2.4.gem
 
 #echo
 #echo "---------------------------------------------------"

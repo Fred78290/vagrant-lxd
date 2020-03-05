@@ -35,5 +35,6 @@ Gem::Specification.new do |spec|
     f.match(%r{^(test|spec|features)/})
   end
 
-  spec.add_runtime_dependency 'hyperkit', '~> 1.2'
+  spec.add_runtime_dependency 'activesupport', '5.2.1'
+  spec.add_runtime_dependency 'hyperkit', '1.2'
 end
